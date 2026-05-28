@@ -2,7 +2,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import AddCandidateDialog from '../add-candidate-dialog';
+import AddCandidateDialog from '@/components/dialogs/add-candidate-dialog';
 
 jest.mock('@/lib/actions', () => ({
     addCandidateAction: jest.fn(),

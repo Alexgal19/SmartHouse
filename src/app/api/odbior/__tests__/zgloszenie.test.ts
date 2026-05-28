@@ -145,7 +145,7 @@ describe('POST /api/odbior/zgloszenie', () => {
             'driver-1',
             'Nowe zgłoszenie odbioru',
             expect.stringContaining('Stacja autobusowa'),
-            '/dashboard?view=odbior'
+            '/dashboard/odbior'
         );
         // driver-2 has no pushSubscription, rec-1 is not a driver
         expect(mockedSendPushNotification).toHaveBeenCalledTimes(1);

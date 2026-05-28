@@ -1,87 +1,13 @@
-
-
 "use client";
 
-import DashboardView from '@/components/dashboard-view';
-import { useMainLayout } from '@/components/main-layout';
+import DashboardView from '@/components/views/dashboard-view';
+import { useMainLayout } from '@/components/layouts/main-layout';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { SessionData, View } from '@/types';
-import { useSearchParams } from 'next/navigation';
-import EntityView from '@/components/entity-view';
-import HousingView from '@/components/housing-view';
-import ControlCardsView from '@/components/control-cards-view';
-import OdbiorView from '@/components/odbior-view';
-import RecruitmentView from '@/components/recruitment-view';
-import ZapotrzebowaniaView from '@/components/zapotrzebowania-view';
-import OsobaDoZakwaterowaniaView from '@/components/osoba-do-zakwaterowania-view';
-import dynamic from 'next/dynamic';
-
-
-const DynamicSettingsView = dynamic(() => import('@/components/settings-view'), {
-    loading: () => (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
-                <CardContent><Skeleton className="h-48 w-full" /></CardContent>
-            </Card>
-            <Card>
-                <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
-                <CardContent><Skeleton className="h-32 w-full" /></CardContent>
-            </Card>
-        </div>
-    ),
-    ssr: false,
-});
-
-
-function CurrentView({ activeView, currentUser }: { activeView: View; currentUser: SessionData }) {
-    return (
-        <>
-            <div className={activeView !== 'dashboard' ? 'hidden' : ''}>
-                <DashboardView currentUser={currentUser} />
-            </div>
-            <div className={activeView !== 'employees' ? 'hidden' : ''}>
-                <EntityView currentUser={currentUser} />
-            </div>
-            <div className={activeView !== 'housing' ? 'hidden' : ''}>
-                <HousingView currentUser={currentUser} />
-            </div>
-            <div className={activeView !== 'control-cards' ? 'hidden' : ''}>
-                <ControlCardsView currentUser={currentUser} />
-            </div>
-            <div className={activeView !== 'odbior' ? 'hidden' : ''}>
-                <OdbiorView currentUser={currentUser} />
-            </div>
-            <div className={activeView !== 'recruitment' ? 'hidden' : ''}>
-                <RecruitmentView currentUser={currentUser} activeView={activeView} />
-            </div>
-            <div className={activeView !== 'zapotrzebowania' ? 'hidden' : ''}>
-                <ZapotrzebowaniaView currentUser={currentUser} activeView={activeView} />
-            </div>
-            <div className={activeView !== 'osoba-do-zakwaterowania' ? 'hidden' : ''}>
-                <OsobaDoZakwaterowaniaView currentUser={currentUser} />
-            </div>
-            <div className={activeView !== 'settings' ? 'hidden' : ''}>
-                <DynamicSettingsView currentUser={currentUser} />
-            </div>
-        </>
-    );
-}
 
 export default function DashboardPage() {
-    const searchParams = useSearchParams();
     const { currentUser, settings } = useMainLayout();
-    let activeView = searchParams.get('view') as View;
-    if (activeView === 'odbior' && !(currentUser?.isDriver || currentUser?.isAdmin)) {
-        activeView = 'dashboard';
-    }
-    if (activeView === 'zapotrzebowania' && !(currentUser?.isDriver || currentUser?.isAdmin || currentUser?.isBok)) {
-        activeView = 'dashboard';
-    }
-    if (!activeView) {
-        activeView = currentUser?.isDriver ? 'odbior' : 'dashboard';
-    }
+
     if (!currentUser || !settings) {
         return (
             <div className="space-y-6">
@@ -96,20 +22,9 @@ export default function DashboardPage() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader>
-                        <Skeleton className="h-8 w-1/4" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            <Skeleton className="h-24 w-full" />
-                            <Skeleton className="h-24 w-full" />
-                        </div>
-                    </CardContent>
-                </Card>
             </div>
         );
     }
 
-    return <CurrentView activeView={activeView} currentUser={currentUser} />;
+    return <DashboardView currentUser={currentUser} />;
 }

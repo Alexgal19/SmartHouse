@@ -412,3 +412,13 @@ const handlePointerDown = (e: React.PointerEvent) => {
 **Obszar ryzyka:** Ten sam pattern jest używany w 4+ komponentach: `edit-employee-form.tsx`, `edit-non-employee-form.tsx`, `edit-bok-resident-form.tsx`, `wizard-utils.tsx`, `header.tsx`. Przy zmianie w jednym miejscu — sprawdź pozostałe.
 
 **Pliki:** `src/components/edit-employee-form.tsx`, `src/components/edit-non-employee-form.tsx`, `src/components/edit-bok-resident-form.tsx`, `src/components/wizard-utils.tsx`, `src/components/header.tsx`
+
+---
+
+### [React / UI] Nadpisywanie optymistycznego stanu przez stale cache z innej instancji Server Action
+
+**Symptom:** Po użyciu akcji "Zwolnij pracownika" osoba znikała z listy (dzięki optymistycznemu update), pojawiała się z powrotem po kilku sekundach (UI migotało), a po odświeżeniu strony znowu znikała.
+**Root cause:** Architektura Next.js 14 Server Actions + izolacja pamięci workerów. `updateEmployee` zmieniało stan w bazie i czyściło in-memory `employeesCache` w workerze A. Wywoływane od razu potem `refreshData` wywoływało `getEmployees()`, co trafiało do workera B, który wciąż miał *stale cache* przez 60 sekund. W rezultacie serwer zwracał stary status "active", a `mergeWithOptimistic` całkowicie nadpisywał nim poprawny, optymistyczny status "dismissed" z React State.
+**Rozwiązanie:** W funkcji `mergeWithOptimistic` dodano specjalny przypadek uodparniający Reacta na ten stale cache race-condition dla zwolnień (bo są to akcje jednokierunkowe). Jeśli lokalny UI wymusił status `dismissed`, a serwer nagle zwraca stary status `active` dla tego samego pracownika, funkcja łączenia zachowuje `dismissed`. 
+**Obszar ryzyka:** Optymistyczne UI w Server Actions korzystających z in-memory module caching (np. `employeesCache` ze zdefiniowanym TTL) bez centralnego redisa / Next.js Data Cache.
+**Pliki:** `src/lib/merge-optimistic.ts`

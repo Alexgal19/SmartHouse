@@ -77,4 +77,38 @@ describe('mergeWithOptimistic', () => {
             { id: '2', name: 'Two', active: false },
         ]);
     });
+
+    it('preserves dismissed status when server returns active (stale cache race condition)', () => {
+        interface Employee { id: string; name: string; status: string; checkOutDate?: string }
+        const current: Employee[] = [
+            { id: '1', name: 'Alice', status: 'dismissed', checkOutDate: '2023-10-01' },
+            { id: '2', name: 'Bob', status: 'active' }
+        ];
+        // Server returns Alice as active (e.g. stale cache read)
+        const fresh: Employee[] = [
+            { id: '1', name: 'Alice', status: 'active', checkOutDate: '' },
+            { id: '2', name: 'Bob', status: 'active' }
+        ];
+        
+        const result = mergeWithOptimistic(current, fresh);
+        expect(result).toEqual([
+            { id: '1', name: 'Alice', status: 'dismissed', checkOutDate: '2023-10-01' }, // preserved!
+            { id: '2', name: 'Bob', status: 'active' }
+        ]);
+    });
+
+    it('updates dismissed status from server if local is active (regular dismissal)', () => {
+        interface Employee { id: string; name: string; status: string; checkOutDate?: string }
+        const current: Employee[] = [
+            { id: '1', name: 'Alice', status: 'active' }
+        ];
+        const fresh: Employee[] = [
+            { id: '1', name: 'Alice', status: 'dismissed', checkOutDate: '2023-10-01' }
+        ];
+        
+        const result = mergeWithOptimistic(current, fresh);
+        expect(result).toEqual([
+            { id: '1', name: 'Alice', status: 'dismissed', checkOutDate: '2023-10-01' } // server wins
+        ]);
+    });
 });

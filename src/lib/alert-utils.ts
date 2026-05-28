@@ -67,7 +67,7 @@ export function extractAlertDetails(
     const item: AlertDetailItem = {
       id: e.id,
       name: e.fullName,
-      link: `/dashboard?view=employees&edit=${e.id}`,
+      link: `/dashboard/employees?edit=${e.id}`,
       extra: daysLeft < 0
         ? `⛔ przeterminowana o ${Math.abs(daysLeft)} dni`
         : daysLeft === 0
@@ -110,7 +110,7 @@ export function extractAlertDetails(
       capacityExceeded.push({
         id: addr.id,
         name: `${addr.name} / ${room.name}`,
-        link: `/dashboard?view=housing&address=${addr.id}`,
+        link: `/dashboard/housing?address=${addr.id}`,
         extra: `${current}/${room.capacity} osób`,
         coordinatorId: null,
         coordinatorIds: addr.coordinatorIds ?? [],
@@ -128,7 +128,7 @@ export function extractAlertDetails(
       return {
         id: nz.id,
         name: nz.fullName,
-        link: `/dashboard?view=employees&tab=non-employees&edit=${nz.id}`,
+        link: `/dashboard/employees?tab=non-employees&edit=${nz.id}`,
         extra: `brak: ${missing.join(', ')}`,
         coordinatorId: nz.coordinatorId ?? null,
       };
@@ -156,7 +156,7 @@ export function extractAlertDetails(
       fullName: e.fullName,
       normalizedName: e.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
       coordinatorId: coordId,
-      link: `/dashboard?view=employees&edit=${e.id}`,
+      link: `/dashboard/employees?edit=${e.id}`,
     });
   }
 

@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { ModernHouseIcon } from '../icons/modern-house-icon';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { countActiveAddressesInUse, isOwnAddressEntry } from '@/lib/address-filters';
-import { useMainLayout } from '../main-layout';
+import { useMainLayout } from '@/components/layouts/main-layout';
 
 const kpiIcons = {
     housedEmployees: <Users className="h-6 w-6 text-primary" />,

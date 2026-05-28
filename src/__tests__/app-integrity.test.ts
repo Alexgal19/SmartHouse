@@ -1,7 +1,7 @@
 
 import { cn, filterNotifications } from '@/lib/utils';
 import { type Employee, type Notification } from '@/types'; 
-import { formSchema } from '@/components/add-employee-form';
+import { formSchema } from '@/components/forms/add-employee-form';
 
 /**
  * APP INTEGRITY TEST SUITE

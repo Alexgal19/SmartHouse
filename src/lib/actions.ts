@@ -533,7 +533,7 @@ const createNotification = async (
         // Send Push Notification (only if explicitly enabled)
         if (sendPush && recipientId) {
             const pushTitle = 'Powiadomienie SmartHouse';
-            const pushLink = `/dashboard?view=employees&edit=${entity.id}`;
+            const pushLink = `/dashboard/employees?edit=${entity.id}`;
             const pushResult = await sendPushNotification(recipientId, pushTitle, message, pushLink);
             if (!pushResult.success) {
                 console.error("Failed to send push notification:", pushResult.error);
@@ -3060,7 +3060,7 @@ export async function sendCandidateDemandNotificationAction(
         const demandId = `demand-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
         const message = `Zapotrzebowanie na kandydata: ${candidate.firstName} ${candidate.lastName}. Skąd: ${pickupAddress}. Czas dostarczenia: ${estimatedDeliveryTime}`;
         const pushTitle = '🚨 Zapotrzebowanie na kandydata';
-        const pushLink = `/dashboard?view=zapotrzebowania`;
+        const pushLink = `/dashboard/zapotrzebowania`;
 
         // Send all pushes in parallel — don't block each coordinator on the previous one
         const pushResults = await Promise.all(
@@ -3223,7 +3223,7 @@ export async function retryCandidateDemandsAction(): Promise<{ success: boolean;
                 continue;
             }
             const pushTitle = '🚨 [PRZYPOMNIENIE] Zapotrzebowanie na kandydata';
-            const pushLink = `/dashboard?view=recruitment&demandId=${demand.id}`;
+            const pushLink = `/dashboard/recruitment?demandId=${demand.id}`;
             const message = `Zapotrzebowanie na kandydata: ${demand.candidateFirstName} ${demand.candidateLastName}`;
             for (const coord of targetCoordinators) {
                 await sendPushNotificationWithData(coord.uid, pushTitle, message, pushLink, { demandId: demand.id });

@@ -8,9 +8,9 @@ export default async function Home() {
 
   if (session.isLoggedIn) {
     if (session.isDriver) {
-      redirect('/dashboard?view=employees&tab=bok-residents');
+      redirect('/dashboard/employees?tab=bok-residents');
     } else {
-      redirect('/dashboard?view=dashboard');
+      redirect('/dashboard');
     }
   }
 

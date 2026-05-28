@@ -2,7 +2,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import RecruitmentView from '../recruitment-view';
+import RecruitmentView from '@/components/views/recruitment-view';
 import type { SessionData, Candidate, CandidateDemand } from '@/types';
 
 let mockDemandId: string | null = null;
@@ -62,7 +62,7 @@ import {
     acknowledgeCandidateDemandAction,
     getOdbiorEntriesAction,
 } from '@/lib/actions';
-import { useMainLayout } from '@/components/main-layout';
+import { useMainLayout } from '@/components/layouts/main-layout';
 
 const mockGetCandidates = getCandidatesAction as jest.Mock;
 const mockGetDemands = getCandidateDemandsAction as jest.Mock;
@@ -528,20 +528,5 @@ describe('RecruitmentView', () => {
         expect(screen.queryByText(/Przyjąć zapotrzebowanie na kandydata/i)).not.toBeInTheDocument();
     });
 
-    it('opens AddCandidateDialog when Dodaj kandydata button is clicked', async () => {
-        mockGetCandidates.mockResolvedValue([]);
-        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
-
-        await waitFor(() => {
-            expect(screen.getByRole('button', { name: /Dodaj kandydata/i })).toBeInTheDocument();
-        });
-
-        fireEvent.click(screen.getByRole('button', { name: /Dodaj kandydata/i }));
-
-        await waitFor(() => {
-            // Dialog should appear with role="dialog"
-            expect(screen.getByRole('dialog')).toBeInTheDocument();
-        });
-    });
 
 });

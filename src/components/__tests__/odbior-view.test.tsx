@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import OdbiorView from '../odbior-view';
+import OdbiorView from '@/components/views/odbior-view';
 import type { SessionData, OdbiorZgloszenie } from '@/types';
 
 // Mock the toast hook
@@ -13,7 +13,7 @@ jest.mock('@/hooks/use-toast', () => ({
 global.URL.createObjectURL = jest.fn();
 global.URL.revokeObjectURL = jest.fn();
 
-jest.mock('@/components/odbior-detail-dialog', () => ({
+jest.mock('@/components/dialogs/odbior-detail-dialog', () => ({
   __esModule: true,
   default: ({ open, zgloszenie }: { open: boolean; zgloszenie?: { id?: string } }) =>
     open ? <div data-testid="detail-dialog">{zgloszenie?.id}</div> : null,

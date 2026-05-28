@@ -1,12 +1,12 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import DashboardView from '../dashboard-view';
-import { useMainLayout } from '../main-layout';
+import DashboardView from '@/components/views/dashboard-view';
+import { useMainLayout } from '@/components/layouts/main-layout';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { SessionData, Settings } from '@/types';
 
 // Mock dependencies
-jest.mock('../main-layout', () => ({
+jest.mock('@/components/layouts/main-layout', () => ({
   useMainLayout: jest.fn(),
 }));
 jest.mock('@/hooks/use-mobile');

@@ -2,7 +2,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { FilterControls } from '../housing-view';
+import { FilterControls } from '@/components/views/housing-view';
 
 // Mock actions to avoid firebase-admin initialization in tests
 jest.mock('@/lib/actions', () => ({}));

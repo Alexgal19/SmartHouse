@@ -2,14 +2,14 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import OdbiorDetailDialog from '../odbior-detail-dialog';
+import OdbiorDetailDialog from '@/components/dialogs/odbior-detail-dialog';
 import type { SessionData, OdbiorZgloszenie } from '@/types';
 
-jest.mock('@/components/odbior-zakwaterowanie-dialog', () => ({
+jest.mock('@/components/dialogs/odbior-zakwaterowanie-dialog', () => ({
   OdbiorZakwaterowanieDialog: () => null,
 }));
 
-jest.mock('@/components/add-candidate-dialog', () => ({
+jest.mock('@/components/dialogs/add-candidate-dialog', () => ({
   __esModule: true,
   default: () => null,
 }));

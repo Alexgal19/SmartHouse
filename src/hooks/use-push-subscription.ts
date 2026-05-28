@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMainLayout } from '@/components/main-layout';
+import { useMainLayout } from '@/components/layouts/main-layout';
 import { messagingPromise } from '@/lib/firebase';
 import { getToken, deleteToken, onMessage } from 'firebase/messaging';
 import { useToast } from '@/hooks/use-toast';

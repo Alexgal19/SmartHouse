@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { BellRing, Loader2 } from 'lucide-react';
-import { useMainLayout } from './main-layout';
+import { useMainLayout } from '@/components/layouts/main-layout';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePushSubscription } from '@/hooks/use-push-subscription';

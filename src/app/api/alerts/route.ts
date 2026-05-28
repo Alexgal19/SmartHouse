@@ -91,7 +91,7 @@ function checkContractExpiry(employees: Employee[]): Alert[] {
         ? `⛔ ${group.expired.length} przeterminowana(-ych) umowa(-ów)`
         : hasUrgent ? `🔴 Wygasające umowy — ${totalCount} osób` : `🟡 Wygasające umowy — ${totalCount} osób`,
       body: lines.join('\n'),
-      link: `/dashboard?view=employees&edit=${topPerson.id}`,
+      link: `/dashboard/employees?edit=${topPerson.id}`,
     });
   }
   return alerts;
@@ -128,7 +128,7 @@ function checkCapacity(
         coordinatorIds: addr.coordinatorIds ?? [],
         title: `🏠 Przekroczona pojemność pokoju`,
         body: `${addr.name} / ${room.name}: ${current} osób przy pojemności ${room.capacity}.`,
-        link: `/dashboard?view=housing&address=${addr.id}`,
+        link: `/dashboard/housing?address=${addr.id}`,
       });
     }
   }
@@ -147,7 +147,7 @@ function checkMissingPaymentData(nonEmployees: NonEmployee[]): Alert[] {
         coordinatorIds: nz.coordinatorId ? [nz.coordinatorId] : [],
         title: `💳 Brakujące dane płatności NZ`,
         body: `${nz.fullName} — brak: ${missing.join(', ')}.`,
-        link: `/dashboard?view=employees&tab=non-employees&edit=${nz.id}`,
+        link: `/dashboard/employees?tab=non-employees&edit=${nz.id}`,
       };
     });
 }
@@ -171,7 +171,7 @@ function checkDuplicatePersons(
       id: e.id,
       fullName: e.fullName,
       normalizedName: e.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
-      link: `/dashboard?view=employees&edit=${e.id}`,
+      link: `/dashboard/employees?edit=${e.id}`,
     });
   }
 

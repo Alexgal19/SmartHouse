@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
         const komentarz = (formData.get('komentarz') as string) ?? '';
         const hasPermit = formData.get('hasPermit') === 'true';
         const hasPesel = formData.get('hasPesel') === 'true';
+        const rekruterNazwaForm = formData.get('rekruterNazwa') as string;
 
         if (!numerTelefonu || !skad || isNaN(iloscOsob)) {
             return NextResponse.json({ error: 'Brakujące wymagane pola.' }, { status: 400 });
@@ -86,7 +87,7 @@ export async function POST(req: NextRequest) {
             hasPesel,
             zdjeciaUrls: uploadedUrls.join(','),
             rekruterId: session.uid ?? '',
-            rekruterNazwa: session.name ?? '',
+            rekruterNazwa: rekruterNazwaForm || (session.name ?? ''),
             status: 'Nieprzyjęte',
             kierowcaId: '',
             kierowcaNazwa: '',
@@ -107,7 +108,7 @@ export async function POST(req: NextRequest) {
             .then(settings => {
                 const drivers = settings.coordinators.filter(c => c.isDriver && c.pushSubscription);
                 return Promise.allSettled(
-                    drivers.map(d => sendPushNotification(d.uid, notifyTitle, notifyBody, '/dashboard?view=odbior'))
+                    drivers.map(d => sendPushNotification(d.uid, notifyTitle, notifyBody, '/dashboard/odbior'))
                 );
             })
             .catch(e => console.warn('[Odbiór] Failed to send driver notifications:', e));

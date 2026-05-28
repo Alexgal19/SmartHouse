@@ -59,7 +59,7 @@ function LoginForm() {
         const rawCallbackUrl = searchParams.get('callbackUrl') || '';
         const callbackUrl = rawCallbackUrl.startsWith('/') && !rawCallbackUrl.startsWith('//')
             ? rawCallbackUrl
-            : '/dashboard?view=dashboard';
+            : '/dashboard';
 
         try {
             const { success, user } = await login(name, password);

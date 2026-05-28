@@ -6,7 +6,7 @@ import type { Employee, NonEmployee } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
-import { useMainLayout } from '@/components/main-layout';
+import { useMainLayout } from '@/components/layouts/main-layout';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Button } from '../ui/button';

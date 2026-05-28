@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import ControlCardsView from '../control-cards-view';
+import ControlCardsView from '@/components/views/control-cards-view';
 import { SessionData } from '@/types';
 import { uploadControlCardPhotoAction } from '@/lib/actions';
 
@@ -33,7 +33,7 @@ const mockSettings = {
   bokStatuses: []
 };
 
-jest.mock('@/components/main-layout', () => ({
+jest.mock('@/components/layouts/main-layout', () => ({
   useMainLayout: () => ({
     settings: mockSettings,
     rawSettings: mockSettings,

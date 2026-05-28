@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import ZapotrzebowaniaView from '../zapotrzebowania-view';
+import ZapotrzebowaniaView from '@/components/views/zapotrzebowania-view';
 import type { SessionData, CandidateDemand } from '@/types';
 
 const mockToast = jest.fn();

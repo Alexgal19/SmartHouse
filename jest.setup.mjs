@@ -80,7 +80,7 @@ jest.mock('next/cache', () => ({
 }));
 
 // Mock MainLayout Context
-jest.mock('@/components/main-layout', () => ({
+jest.mock('@/components/layouts/main-layout', () => ({
   useMainLayout: jest.fn(() => ({
     allEmployees: [],
     allNonEmployees: [],
@@ -136,6 +136,7 @@ jest.mock('@/components/main-layout', () => ({
 // IMPORTANT: t must be a stable function reference — components use it in useCallback([t]),
 // so returning a new function each render causes infinite effect loops in tests.
 jest.mock('@/lib/i18n', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { pl } = require('@/lib/translations/pl');
   function stableT(key, params) {
     let text = pl[key] ?? key;
@@ -157,6 +158,7 @@ jest.mock('@/lib/i18n', () => {
 
 // Mock react-webcam globally — used by OcrCameraButton in AddCandidateDialog
 jest.mock('react-webcam', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const React = require('react');
   const Webcam = React.forwardRef((_props, ref) => {
     React.useImperativeHandle(ref, () => ({

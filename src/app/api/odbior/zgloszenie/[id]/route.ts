@@ -64,6 +64,7 @@ export async function PATCH(
             iloscOsob?: string;
             komentarz?: string;
             zdjeciaUrls?: string;
+            rekruterNazwa?: string;
         };
 
         const zgloszenia = await getOdbiorZgloszenia();
@@ -110,6 +111,7 @@ export async function PATCH(
             if (body.iloscOsob !== undefined && String(body.iloscOsob) !== String(existing?.iloscOsob)) diff.push(`Zmieniono ilość osób: ${existing?.iloscOsob} → ${body.iloscOsob}`);
             if (body.komentarz !== undefined && body.komentarz !== existing?.komentarz) diff.push('Zmieniono komentarz');
             if (body.zdjeciaUrls !== undefined && body.zdjeciaUrls !== existing?.zdjeciaUrls) diff.push('Zmieniono zdjęcia');
+            if (body.rekruterNazwa !== undefined && body.rekruterNazwa !== existing?.rekruterNazwa) diff.push(`Zmieniono rekrutera: ${existing?.rekruterNazwa || '-'} → ${body.rekruterNazwa}`);
             if (diff.length > 0) {
                 changeLogEntries.push({ timestamp: nowIso, userId: session.uid ?? '', userName: session.name ?? '', changes: diff.join('; ') });
             }
@@ -121,6 +123,7 @@ export async function PATCH(
             if (body.iloscOsob !== undefined) updates.iloscOsob = body.iloscOsob;
             if (body.komentarz !== undefined) updates.komentarz = body.komentarz;
             if (body.zdjeciaUrls !== undefined) updates.zdjeciaUrls = body.zdjeciaUrls;
+            if (body.rekruterNazwa !== undefined) updates.rekruterNazwa = body.rekruterNazwa;
         } else {
             return NextResponse.json({ error: 'Nieznana akcja.' }, { status: 400 });
         }

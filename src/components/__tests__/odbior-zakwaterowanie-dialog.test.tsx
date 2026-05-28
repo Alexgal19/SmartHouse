@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { OdbiorZakwaterowanieDialog } from '../odbior-zakwaterowanie-dialog';
+import { OdbiorZakwaterowanieDialog } from '@/components/dialogs/odbior-zakwaterowanie-dialog';
 import type { SessionData } from '@/types';
 import { addOdbiorZakwaterowanieAction } from '@/lib/actions';
 
@@ -33,7 +33,7 @@ const mockMainLayout = {
   patchRawBokResident: jest.fn(),
 };
 
-jest.mock('@/components/main-layout', () => ({
+jest.mock('@/components/layouts/main-layout', () => ({
   useMainLayout: () => mockMainLayout,
 }));
 

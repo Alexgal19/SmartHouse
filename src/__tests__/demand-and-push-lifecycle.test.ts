@@ -143,10 +143,10 @@ describe('Demand and Push Notification Lifecycle', () => {
             for (const msg of sent) {
                 expect(msg.data.title).toBe('🚨 Zapotrzebowanie na kandydata');
                 expect(msg.data.body).toContain('Jan Kowalski');
-                expect(msg.data.url).toBe('/dashboard?view=zapotrzebowania');
+                expect(msg.data.url).toBe('/dashboard/zapotrzebowania');
                 expect(msg.data.demandId).toBeDefined();
                 expect(msg.webpush.headers.Urgency).toBe('high');
-                expect(msg.webpush.fcmOptions.link).toBe('/dashboard?view=zapotrzebowania');
+                expect(msg.webpush.fcmOptions.link).toBe('/dashboard/zapotrzebowania');
             }
 
             // Verify tokens match coordinators
@@ -250,7 +250,7 @@ describe('Demand and Push Notification Lifecycle', () => {
             expect(sent.length).toBeGreaterThanOrEqual(1);
             const retryMsg = sent.find((m: any) => m.data.title?.includes('PRZYPOMNIENIE'));
             expect(retryMsg).toBeDefined();
-            expect(retryMsg.data.url).toBe('/dashboard?view=recruitment&demandId=demand-old');
+            expect(retryMsg.data.url).toBe('/dashboard/recruitment?demandId=demand-old');
             expect(retryMsg.data.demandId).toBe('demand-old');
         });
 

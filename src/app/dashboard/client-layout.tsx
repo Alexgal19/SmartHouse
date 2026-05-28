@@ -1,6 +1,6 @@
 "use client";
 
-import MainLayout from '@/components/main-layout';
+import MainLayout from '@/components/layouts/main-layout';
 import type { SessionData } from '@/types';
 
 export default function ClientLayout({

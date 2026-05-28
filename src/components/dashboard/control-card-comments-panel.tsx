@@ -198,7 +198,7 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
                 {i > 0 && <div className="border-t border-muted my-2" />}
                 <div className="relative rounded-md hover:bg-muted/50 transition-colors -mx-2 px-2 py-1 group">
                   <Link
-                    href={`/dashboard?view=control-cards&address=${item.addressId}`}
+                    href={`/dashboard/control-cards?address=${item.addressId}`}
                     className="block space-y-0.5"
                   >
                     <p className="text-xs font-medium text-foreground flex items-center gap-1">

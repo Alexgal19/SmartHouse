@@ -1,10 +1,10 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { AddEmployeeForm } from '../add-employee-form';
+import { AddEmployeeForm } from '@/components/forms/add-employee-form';
 import type { Settings, SessionData } from '@/types';
 
 // Mock the main layout
-jest.mock('../main-layout', () => ({
+jest.mock('@/components/layouts/main-layout', () => ({
   useMainLayout: () => ({
     handleDismissEmployee: jest.fn(),
     allEmployees: [],

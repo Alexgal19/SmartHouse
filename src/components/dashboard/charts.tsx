@@ -7,7 +7,7 @@ import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart2, Copy, Users, ArrowLeft } from "lucide-react";
 import type { Employee, Settings, ChartConfig, Coordinator, NonEmployee } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useMainLayout } from '@/components/main-layout';
+import { useMainLayout } from '@/components/layouts/main-layout';
 import { format, getYear, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval, parseISO } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useLanguage } from '@/lib/i18n';

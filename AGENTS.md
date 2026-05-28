@@ -373,7 +373,8 @@ Dopisz wpis do `LESSONS_LEARNED.md` w formacie:
    - **NIGDY** nie kopiuj wzorca `// eslint-disable-next-line no-restricted-syntax` z istniejącego kodu bez pisemnej zgody właściciela
    - Dozwolone operacje: `addRow()`, `updateRowById()`, `addColumnsSafely()`, `getRows()`, `getHeaders()`
    - Jeśli funkcjonalność wymaga usunięcia danych → STOP → zapytaj właściciela przed implementacją
-9. **Token first** — każdy agent musi minimalizować zużycie tokenów poprzez precyzyjne zapytania, celowe przeszukiwania i zwięzłe odpowiedzi bez zbędnego wstępu lub zakładowania.
+10. **🚨 ABSOLUTNY ZAKAZ — Ochrona zdjęć i załączników** — Żaden agent AI nie może pisać kodu, który automatycznie usuwa pliki fizyczne (zdjęcia z Kart kontroli, Start List, liczników) z Firebase Storage ani wymazywać ich linków z bazy produkcyjnej przy operacjach "anuluj/usuń w locie". Zapobiega to przypadkowemu i nieodwracalnemu zniszczeniu danych.
+11. **Token first** — każdy agent musi minimalizować zużycie tokenów poprzez precyzyjne zapytania, celowe przeszukiwania i zwięzłe odpowiedzi bez zbędnego wstępu lub zakładowania.
    - `LESSONS_LEARNED.md` — czytaj tylko TL;DR na starcie. Pełne sekcje tylko gdy zadanie dotyka danego obszaru.
    - `AI_CONTEXT.md` — używaj **na żądanie** (gdy pytasz o strukturę projektu lub zależności), nie automatycznie na starcie sesji. Plik może być nieaktualny — weryfikuj narzędziami (`grep`, `ls`).
 

@@ -3,7 +3,7 @@
 
 import React, { useMemo } from 'react';
 import type { Employee, NonEmployee } from "@/types";
-import { useMainLayout } from '@/components/main-layout';
+import { useMainLayout } from '@/components/layouts/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip, Cell } from "recharts";
 import { BarChart2, BedDouble, UserRoundCheck, Users } from "lucide-react";

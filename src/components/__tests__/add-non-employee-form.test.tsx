@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { AddNonEmployeeForm } from '../add-non-employee-form';
+import { AddNonEmployeeForm } from '@/components/forms/add-non-employee-form';
 import type { Settings, SessionData } from '@/types';
 
 // Mock useToast
@@ -16,7 +16,7 @@ jest.mock('@/ai/flows/extract-passport-data-flow', () => ({
 }));
 
 // Mock useMainLayout (wizard uses allEmployees, allNonEmployees, allBokResidents)
-jest.mock('../main-layout', () => ({
+jest.mock('@/components/layouts/main-layout', () => ({
   useMainLayout: () => ({
     allEmployees: [],
     allNonEmployees: [],

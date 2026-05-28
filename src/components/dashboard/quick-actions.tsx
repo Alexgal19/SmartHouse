@@ -4,7 +4,7 @@
 import { Building, UserPlus, Search, Bell, BellOff, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useMainLayout } from "@/components/main-layout";
+import { useMainLayout } from "@/components/layouts/main-layout";
 import { useRouter } from "next/navigation";
 import { usePushSubscription } from "@/hooks/use-push-subscription";
 import { useLanguage } from '@/lib/i18n';
@@ -43,12 +43,12 @@ export function QuickActions({ onOpenAddressPreview }: { onOpenAddressPreview?: 
         {
             icon: <Search className="h-6 w-6 text-blue-500" />,
             label: t('dashboard.searchResident'),
-            onClick: () => router.push('/dashboard?view=employees')
+            onClick: () => router.push('/dashboard/employees')
         },
         {
             icon: <Building className="h-6 w-6 text-green-500" />,
             label: t('dashboard.browseHousing'),
-            onClick: () => router.push('/dashboard?view=housing')
+            onClick: () => router.push('/dashboard/housing')
         },
         {
             icon: <Building className="h-6 w-6 text-indigo-500" />,
