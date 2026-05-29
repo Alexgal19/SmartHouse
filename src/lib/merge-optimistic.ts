@@ -7,12 +7,22 @@
  */
 
 const deletedEntityIds = new Set<string>();
+const editedEntityIds = new Map<string, number>();
 
 export function trackDeletedEntityId(id: string | string[]) {
     if (Array.isArray(id)) {
         id.forEach(i => deletedEntityIds.add(i));
     } else {
         deletedEntityIds.add(id);
+    }
+}
+
+export function trackEditedEntityId(id: string | string[]) {
+    const now = Date.now();
+    if (Array.isArray(id)) {
+        id.forEach(i => editedEntityIds.set(i, now));
+    } else {
+        editedEntityIds.set(id, now);
     }
 }
 
@@ -25,6 +35,12 @@ export function mergeWithOptimistic<T extends { id: string }>(current: T[] | nul
     const mergedFresh = filteredFresh.map(freshItem => {
         const currentItem = current.find(c => c.id === freshItem.id);
         if (currentItem) {
+            const lastEdited = editedEntityIds.get(freshItem.id);
+            if (lastEdited && Date.now() - lastEdited < 60000) {
+                // Ignore stale server data, keep local optimistic edit
+                return currentItem;
+            }
+
             // Treat as any to safely check status and checkOutDate fields
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const curr = currentItem as any;

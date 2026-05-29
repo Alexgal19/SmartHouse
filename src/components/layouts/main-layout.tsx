@@ -10,7 +10,7 @@ import { MobileNav } from '@/components/layouts/mobile-nav';
 import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, AddressHistory, BokResident, OdbiorEntry, Candidate, CandidateDemand } from '@/types';
 import { Home, Settings as SettingsIcon, Users, Building, ClipboardCheck, Truck, Briefcase, ClipboardList } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
-import { mergeWithOptimistic, trackDeletedEntityId } from '@/lib/merge-optimistic';
+import { mergeWithOptimistic, trackDeletedEntityId, trackEditedEntityId } from '@/lib/merge-optimistic';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
     addEmployee,
@@ -636,6 +636,7 @@ export default function MainLayout({
         if (!currentUser) return;
 
         if (editingEmployee) {
+            trackEditedEntityId(editingEmployee.id);
             const originalEmployees = rawEmployees;
             setRawEmployees(prev => prev ? prev.map(e => e.id === editingEmployee.id ? { ...e, ...data, fullName: `${data.lastName} ${data.firstName}`.trim() } : e) : null);
             // fire-and-forget — dialog zamknie się natychmiast po optimistic update
@@ -670,6 +671,7 @@ export default function MainLayout({
         if (!currentUser) return;
 
         if (editingNonEmployee) {
+            trackEditedEntityId(editingNonEmployee.id);
             const originalNonEmployees = rawNonEmployees;
             setRawNonEmployees(prev => prev ? prev.map(e => e.id === editingNonEmployee.id ? { ...e, ...data, fullName: `${data.lastName} ${data.firstName}`.trim() } : e) : null);
             // fire-and-forget — dialog zamknie się natychmiast po optimistic update
@@ -703,6 +705,7 @@ export default function MainLayout({
         if (!currentUser) return;
 
         if (editingBokResident) {
+            trackEditedEntityId(editingBokResident.id);
             const originalBokResidents = rawBokResidents;
             setRawBokResidents(prev => prev ? prev.map(r => r.id === editingBokResident.id ? { ...r, ...data, fullName: `${data.lastName} ${data.firstName}`.trim() } : r) : null);
             updateBokResident(editingBokResident.id, data, currentUser.uid)
@@ -777,6 +780,7 @@ export default function MainLayout({
     }, [currentUser, rawBokResidents, toast, t]);
 
     const patchRawBokResident = useCallback((id: string, patch: Partial<BokResident>) => {
+        trackEditedEntityId(id);
         setRawBokResidents(prev => prev ? prev.map(r => r.id === id ? { ...r, ...patch } : r) : null);
     }, []);
 
@@ -789,6 +793,7 @@ export default function MainLayout({
     }, []);
 
     const patchRawOdbiorEntry = useCallback((id: string, patch: Partial<OdbiorEntry>) => {
+        trackEditedEntityId(id);
         setOdbiorEntries(prev => prev ? prev.map(e => e.id === id ? { ...e, ...patch } : e) : null);
     }, []);
 
@@ -944,6 +949,7 @@ export default function MainLayout({
 
     const handleDismissEmployee = useCallback(async (employeeId: string, checkOutDate: Date) => {
         if (!currentUser) return;
+        trackEditedEntityId(employeeId);
         const originalEmployees = rawEmployees;
         const formattedDate = format(checkOutDate, 'yyyy-MM-dd');
         setRawEmployees(prev => prev ? prev.map(e => e.id === employeeId ? { ...e, status: 'dismissed' as const, checkOutDate: formattedDate } : e) : null);
@@ -960,6 +966,7 @@ export default function MainLayout({
 
     const handleDismissBokResident = useCallback(async (bokResidentId: string, checkOutDate: Date) => {
         if (!currentUser) return;
+        trackEditedEntityId(bokResidentId);
         const originalBokResidents = rawBokResidents;
         const formattedDate = format(checkOutDate, 'yyyy-MM-dd');
         setRawBokResidents(prev => prev ? prev.map(r => r.id === bokResidentId ? { ...r, checkOutDate: formattedDate, status: 'dismissed' as const } : r) : null);
@@ -976,6 +983,7 @@ export default function MainLayout({
 
     const handleDismissNonEmployee = useCallback(async (nonEmployeeId: string, checkOutDate: Date) => {
         if (!currentUser) return;
+        trackEditedEntityId(nonEmployeeId);
         const originalNonEmployees = rawNonEmployees;
         const formattedDate = format(checkOutDate, 'yyyy-MM-dd');
         setRawNonEmployees(prev => prev ? prev.map(n => n.id === nonEmployeeId ? { ...n, status: 'dismissed' as const, checkOutDate: formattedDate } : n) : null);
@@ -992,6 +1000,7 @@ export default function MainLayout({
 
     const handleRestoreEmployee = useCallback(async (employee: Employee) => {
         if (!currentUser) return;
+        trackEditedEntityId(employee.id);
         const originalEmployees = rawEmployees;
         setRawEmployees(prev => prev ? prev.map(e => e.id === employee.id ? { ...e, status: 'active' as const, checkOutDate: null } : e) : null);
         try {
@@ -1007,6 +1016,7 @@ export default function MainLayout({
 
     const handleRestoreNonEmployee = useCallback(async (nonEmployee: NonEmployee) => {
         if (!currentUser) return;
+        trackEditedEntityId(nonEmployee.id);
         const originalNonEmployees = rawNonEmployees;
         setRawNonEmployees(prev => prev ? prev.map(n => n.id === nonEmployee.id ? { ...n, status: 'active' as const, checkOutDate: null } : n) : null);
         try {
@@ -1021,6 +1031,7 @@ export default function MainLayout({
 
     const handleRestoreBokResident = useCallback(async (bokResident: BokResident) => {
         if (!currentUser) return;
+        trackEditedEntityId(bokResident.id);
         const originalBokResidents = rawBokResidents;
         setRawBokResidents(prev => prev ? prev.map(r => r.id === bokResident.id ? { ...r, checkOutDate: null, status: 'active' as const } : r) : null);
         try {
