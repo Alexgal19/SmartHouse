@@ -837,7 +837,7 @@ function ControlCardDialog({
     }, [open, existingCard, address, slComplete]);
 
     const handleTabChange = (val: string) => {
-        if (val === 'control' && !slComplete) return;
+        if (val === 'control' && !slComplete && !currentUser.isAdmin) return;
         setActiveTab(val as 'startlist' | 'control');
     };
 
@@ -1192,9 +1192,9 @@ function ControlCardDialog({
                             </TabsTrigger>
                             <TabsTrigger
                                 value="control"
-                                disabled={!slComplete}
-                                className={`gap-1.5 ${!slComplete ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                title={!slComplete ? t('controlCards.completeStartListFirst') : undefined}
+                                disabled={!slComplete && !currentUser.isAdmin}
+                                className={`gap-1.5 ${!slComplete && !currentUser.isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                title={!slComplete && !currentUser.isAdmin ? t('controlCards.completeStartListFirst') : undefined}
                             >
                                 <ClipboardCheck className="w-3.5 h-3.5" />
                                 <span className="text-xs">{t('controlCards.control')}</span>
@@ -1211,7 +1211,7 @@ function ControlCardDialog({
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="startlist">{t('controlCards.startList')}</SelectItem>
-                                <SelectItem value="control" disabled={!slComplete}>{t('controlCards.control')}</SelectItem>
+                                <SelectItem value="control" disabled={!slComplete && !currentUser.isAdmin}>{t('controlCards.control')}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
