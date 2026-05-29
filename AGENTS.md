@@ -377,6 +377,7 @@ Dopisz wpis do `LESSONS_LEARNED.md` w formacie:
 11. **Token first** — każdy agent musi minimalizować zużycie tokenów poprzez precyzyjne zapytania, celowe przeszukiwania i zwięzłe odpowiedzi bez zbędnego wstępu lub zakładowania.
    - `LESSONS_LEARNED.md` — czytaj tylko TL;DR na starcie. Pełne sekcje tylko gdy zadanie dotyka danego obszaru.
    - `AI_CONTEXT.md` — używaj **na żądanie** (gdy pytasz o strukturę projektu lub zależności), nie automatycznie na starcie sesji. Plik może być nieaktualny — weryfikuj narzędziami (`grep`, `ls`).
+12. **Zawsze pytaj o commit i push** — Po zakończeniu implementacji zadania, każdy agent pracujący nad tym projektem ma bezwzględny obowiązek zapytać użytkownika "Czy chcesz żebym zrobił git commit i git push?" (lub od razu to wykonać, jeśli użytkownik pozwolił na to wcześniej). Nigdy nie kończ zadania bez ustaleń dotyczących repozytorium.
 
 ---
 
