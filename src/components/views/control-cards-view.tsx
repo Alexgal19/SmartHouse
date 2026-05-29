@@ -465,6 +465,15 @@ const buildFormFromCard = (card: ControlCard, address: Address): FormState => {
     };
 };
 
+function NumberField({ label, value, onChange, min = 0 }: { label: string; value: number; onChange: (n: number) => void; min?: number }) {
+    return (
+        <div className="space-y-1.5">
+            <Label className="text-xs font-medium">{label}</Label>
+            <Input type="number" min={min} value={value} onChange={(e) => onChange(Math.max(min, parseInt(e.target.value) || 0))} className="h-10" />
+        </div>
+    );
+}
+
 // ─── Start-list Form ────────────────────────────────────────────────────────
 
 function StartListForm({
@@ -644,13 +653,6 @@ function StartListForm({
         });
     };
 
-    const NumberField = ({ label, value, onChange, min = 0 }: { label: string; value: number; onChange: (n: number) => void; min?: number }) => (
-        <div className="space-y-1.5">
-            <Label className="text-xs font-medium">{label}</Label>
-            <Input type="number" min={min} value={value} onChange={(e) => onChange(Math.max(min, parseInt(e.target.value) || 0))} className="h-9" />
-        </div>
-    );
-
     return (
         <div className="space-y-5">
             <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20 text-xs text-muted-foreground">
@@ -673,11 +675,11 @@ function StartListForm({
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                     <Label className="text-xs font-medium">{t('controlCards.distanceToWork')}</Label>
-                    <Input placeholder="np. 5 km lub 300 m" value={form.distanceToWork} onChange={(e) => setForm(p => ({ ...p, distanceToWork: e.target.value }))} className="h-9" />
+                    <Input placeholder="np. 5 km lub 300 m" value={form.distanceToWork} onChange={(e) => setForm(p => ({ ...p, distanceToWork: e.target.value }))} className="h-10" />
                 </div>
                 <div className="space-y-1.5">
                     <Label className="text-xs font-medium">{t('controlCards.distanceToShop')}</Label>
-                    <Input placeholder="np. 500 m" value={form.distanceToShop} onChange={(e) => setForm(p => ({ ...p, distanceToShop: e.target.value }))} className="h-9" />
+                    <Input placeholder="np. 500 m" value={form.distanceToShop} onChange={(e) => setForm(p => ({ ...p, distanceToShop: e.target.value }))} className="h-10" />
                 </div>
             </div>
 
@@ -729,7 +731,7 @@ function StartListForm({
             <div className="space-y-1.5">
                 <Label className="text-xs font-medium">{t('controlCards.heating')}</Label>
                 <Select value={form.heating} onValueChange={(v) => setForm(p => ({ ...p, heating: v as StartListHeating }))}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                     <SelectContent>
                         {HEATING_OPTIONS.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                     </SelectContent>

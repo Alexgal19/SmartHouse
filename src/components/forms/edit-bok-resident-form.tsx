@@ -162,7 +162,6 @@ const DateInput = ({
         <PopoverTrigger asChild>
           <button
             type="button"
-            id={!textMode ? id : undefined}
             onPointerDown={handlePointerDown}
             className="flex w-full min-h-[44px] items-center rounded-md border border-input bg-background px-3 pr-10 text-sm text-left hover:bg-muted/30"
           >
@@ -209,7 +208,7 @@ export function EditBokResidentForm({
   onOpenChange,
   onSave,
   onDismiss,
-  onDelete,
+  _onDelete,
   settings,
   resident,
   currentUser,
@@ -218,7 +217,7 @@ export function EditBokResidentForm({
   onOpenChange: (isOpen: boolean) => void;
   onSave: (data: BokResidentFormData) => void;
   onDismiss?: (id: string, checkOutDate: Date) => Promise<void>;
-  onDelete?: (id: string) => Promise<void>;
+  _onDelete?: (id: string) => Promise<void>;
   settings: Settings;
   resident: BokResident | null;
   currentUser: SessionData;
@@ -342,8 +341,20 @@ export function EditBokResidentForm({
     });
   }, [settings.addresses, selectedAddress, allEmployees, allNonEmployees, allBokResidents]);
 
+  const initializedForEmployeeId = useRef<string | null>(null);
+  const initializedForNew = useRef<boolean>(false);
+
   useEffect(() => {
+    if (!isOpen) {
+      initializedForEmployeeId.current = null;
+      initializedForNew.current = false;
+      return;
+    }
+
     if (resident) {
+      if (initializedForEmployeeId.current === resident.id) return;
+      initializedForEmployeeId.current = resident.id;
+
       const residentAddress = settings.addresses.find(a => a.name === resident.address);
       form.reset({
         firstName: resident.firstName || '',
@@ -361,6 +372,9 @@ export function EditBokResidentForm({
         hasPesel: resident.hasPesel ?? false,
       });
     } else {
+      if (initializedForNew.current) return;
+      initializedForNew.current = true;
+
       form.reset({
         firstName: '',
         lastName: '',
@@ -377,7 +391,8 @@ export function EditBokResidentForm({
         hasPesel: false,
       });
     }
-  }, [resident, isOpen, form, settings, currentUser]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resident?.id, isOpen, form, settings, currentUser]);
 
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {

@@ -11,44 +11,17 @@ import { useLanguage } from "@/lib/i18n";
 
 const MAX_BAR_ITEMS = 5;
 
-export function MobileNav({
-    activeView,
-    navItems,
-    currentUser,
-    unacceptedCount = 0,
-    wdrodzeCount = 0,
-    pendingDemandsCount = 0
-}: {
+type NavItemType = { view: View; icon: React.ElementType; label: string };
+
+function NavItem({ item, onClick, activeView, unacceptedCount, wdrodzeCount, pendingDemandsCount }: {
+    item: NavItemType;
+    onClick?: () => void;
     activeView: View;
-    navItems: { view: View; icon: React.ElementType; label: string }[];
-    currentUser: SessionData;
-    unacceptedCount?: number;
-    wdrodzeCount?: number;
-    pendingDemandsCount?: number;
+    unacceptedCount: number;
+    wdrodzeCount: number;
+    pendingDemandsCount: number;
 }) {
-    const { t } = useLanguage();
-    const [isMoreOpen, setIsMoreOpen] = useState(false);
-
-    const filteredItems = navItems.filter(item => {
-        if (item.view === 'settings' && !currentUser?.isAdmin) {
-            return false;
-        }
-        if (item.view === 'recruitment' && !(currentUser?.isAdmin || currentUser?.isRekrutacja)) {
-            return false;
-        }
-        if (item.view === 'zapotrzebowania' && !(currentUser?.isAdmin || currentUser?.isDriver || currentUser?.isBok || currentUser?.isRekrutacja)) {
-            return false;
-        }
-        return true;
-    });
-
-    const needsMore = filteredItems.length > MAX_BAR_ITEMS;
-    const barItems = needsMore ? filteredItems.slice(0, MAX_BAR_ITEMS - 1) : filteredItems;
-    const moreItems = needsMore ? filteredItems.slice(MAX_BAR_ITEMS - 1) : [];
-
-    const isMoreActive = moreItems.some(item => item.view === activeView);
-
-    const NavItem = ({ item, onClick }: { item: typeof barItems[0]; onClick?: () => void }) => (
+    return (
         <Link
             href={item.view === 'dashboard' ? '/dashboard' : `/dashboard/${item.view}`}
             onClick={onClick}
@@ -86,12 +59,50 @@ export function MobileNav({
             <span className="truncate text-center w-full px-1">{item.label}</span>
         </Link>
     );
+}
+
+export function MobileNav({
+    activeView,
+    navItems,
+    currentUser,
+    unacceptedCount = 0,
+    wdrodzeCount = 0,
+    pendingDemandsCount = 0
+}: {
+    activeView: View;
+    navItems: { view: View; icon: React.ElementType; label: string }[];
+    currentUser: SessionData;
+    unacceptedCount?: number;
+    wdrodzeCount?: number;
+    pendingDemandsCount?: number;
+}) {
+    const { t } = useLanguage();
+    const [isMoreOpen, setIsMoreOpen] = useState(false);
+
+    const filteredItems = navItems.filter(item => {
+        if (item.view === 'settings' && !currentUser?.isAdmin) {
+            return false;
+        }
+        if (item.view === 'recruitment' && !(currentUser?.isAdmin || currentUser?.isRekrutacja)) {
+            return false;
+        }
+        if (item.view === 'zapotrzebowania' && !(currentUser?.isAdmin || currentUser?.isDriver || currentUser?.isBok || currentUser?.isRekrutacja)) {
+            return false;
+        }
+        return true;
+    });
+
+    const needsMore = filteredItems.length > MAX_BAR_ITEMS;
+    const barItems = needsMore ? filteredItems.slice(0, MAX_BAR_ITEMS - 1) : filteredItems;
+    const moreItems = needsMore ? filteredItems.slice(MAX_BAR_ITEMS - 1) : [];
+
+    const isMoreActive = moreItems.some(item => item.view === activeView);
 
     return (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur-sm sm:hidden shadow-[0_-2px_10px_-3px_rgba(0,0,0,0.1)]">
             <div className="flex h-16 items-center text-xs">
                 {barItems.map(item => (
-                    <NavItem key={item.view} item={item} />
+                    <NavItem key={item.view} item={item} activeView={activeView} unacceptedCount={unacceptedCount} wdrodzeCount={wdrodzeCount} pendingDemandsCount={pendingDemandsCount} />
                 ))}
                 {needsMore && (
                     <Sheet open={isMoreOpen} onOpenChange={setIsMoreOpen}>

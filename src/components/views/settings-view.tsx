@@ -135,7 +135,7 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: F
                             value={newItem}
                             onChange={(e) => setNewItem(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSingle(); } }}
-                            className="h-9"
+                            className="h-10"
                         />
                         <Button type="button" variant="outline" size="sm" onClick={handleAddSingle} className="shrink-0 h-9 px-3">
                             <PlusCircle className="h-4 w-4" />
@@ -149,7 +149,7 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: F
                         placeholder={t('settings.searchItems')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="h-9"
+                        className="h-10"
                     />
                     {/* List */}
                     <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
@@ -160,7 +160,7 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: F
                                 render={({ field: formField }) => (
                                     <FormItem className="flex items-center gap-2">
                                         <FormControl>
-                                            <Input {...formField} className="h-9" />
+                                            <Input {...formField} className="h-10" />
                                         </FormControl>
                                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => remove(field.originalIndex)}>
                                             <Trash2 className="h-4 w-4 text-destructive" />
@@ -219,7 +219,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                         placeholder={t('settings.searchCoordinator')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full sm:w-64 h-9"
+                        className="w-full sm:w-64 h-10"
                     />
                     <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false, isDriver: false, isRekrutacja: false, departments: [], visibilityMode: 'department' })}>
                         <PlusCircle className="mr-2 h-4 w-4" /> {t('settings.addCoordinator')}
@@ -516,10 +516,10 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
                         placeholder={t('settings.searchAddress')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="h-9 w-full sm:w-48"
+                        className="h-10 w-full sm:w-48"
                     />
                     <Select value={filterLocality} onValueChange={setFilterLocality}>
-                        <SelectTrigger className="w-full sm:w-[180px] h-9">
+                        <SelectTrigger className="w-full sm:w-[180px] h-10">
                             <SelectValue placeholder={t('settings.filterByLocality')} />
                         </SelectTrigger>
                         <SelectContent>
@@ -528,7 +528,7 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
                         </SelectContent>
                     </Select>
                     <Select value={filterCoordinatorId} onValueChange={setFilterCoordinatorId}>
-                        <SelectTrigger className="w-full sm:w-[200px] h-9">
+                        <SelectTrigger className="w-full sm:w-[200px] h-10">
                             <SelectValue placeholder={t('settings.filterByCoordinator')} />
                         </SelectTrigger>
                         <SelectContent>

@@ -144,7 +144,7 @@ export function FilterableHeader<T extends string>({
                                 <Filter className="h-3 w-3" />
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[260px] p-0 z-[60]" align="start">
+                        <PopoverContent className="w-[260px] p-0 z-50" align="start">
                             {isDateFilter && dateGroups ? (
                                 <div className="flex flex-col max-h-[400px]">
                                     <div className="p-3 border-b text-sm font-medium">Flitruj daty</div>

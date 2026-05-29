@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { acknowledgeCandidateDemandAction } from '@/lib/actions';
 import { getSession } from '@/lib/auth';
+import { checkRateLimit } from '@/lib/rate-limiter';
 
 export async function POST(req: NextRequest) {
     try {
@@ -10,6 +11,17 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing demandId' }, { status: 400 });
         }
         const session = await getSession();
+
+        // Rate limiting
+        const identifier = session?.uid ? `u:${session.uid}` : `ip:unknown`;
+        const rate = checkRateLimit('/api/candidate-demand/ack', identifier);
+        if (!rate.allowed) {
+            return NextResponse.json(
+                { error: 'Rate limit exceeded. Please try again later.', retryAfterMs: rate.retryAfterMs },
+                { status: 429, headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) } }
+            );
+        }
+
         const result = await acknowledgeCandidateDemandAction(demandId, session?.uid);
         return NextResponse.json(result);
     } catch (error) {

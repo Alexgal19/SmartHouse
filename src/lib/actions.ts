@@ -2691,7 +2691,7 @@ export async function convertOdbiorToBokAction(
             lastName: entry.lastName,
             passportNumber: entry.passportNumber,
             sourceOdbiorId: entry.sourceOdbiorId || null,
-            status: 'zakwaterowana',
+            status: 'zakwaterowana_oczekuje_na_rozmowe',
             createdAt: new Date().toISOString(),
             interviewHistory: [],
             bokId: bok.id,
@@ -2827,7 +2827,7 @@ export async function addOdbiorZakwaterowanieAction(
         // Also update or add as a candidate in Recruitment
         if (input.sourceCandidateId) {
             await updateCandidateInSheet(input.sourceCandidateId, {
-                status: 'zakwaterowana',
+                status: 'zakwaterowana_oczekuje_na_rozmowe',
                 sourceOdbiorId: input.sourceOdbiorId || null,
                 bokId: bok.id,
             });
@@ -2840,7 +2840,7 @@ export async function addOdbiorZakwaterowanieAction(
                 passportNumber: input.passportNumber.trim(),
                 passportPhotoUrl: input.passportPhotoUrl || undefined,
                 sourceOdbiorId: input.sourceOdbiorId || null,
-                status: 'zakwaterowana',
+                status: 'zakwaterowana_oczekuje_na_rozmowe',
                 createdAt: new Date().toISOString(),
                 interviewHistory: [],
                 bokId: bok.id,

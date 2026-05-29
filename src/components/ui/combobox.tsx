@@ -42,6 +42,7 @@ export function Combobox({
     id
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
+  const listId = React.useId()
 
   const selectedOption = options.find((option) => option.value?.toLowerCase() === value?.toLowerCase())
 
@@ -53,6 +54,7 @@ export function Combobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          aria-controls={listId}
           className={cn("w-full justify-between min-h-[44px]", className)}
         >
           <span className="truncate">
@@ -73,6 +75,7 @@ export function Combobox({
         <Command className="flex flex-col overflow-hidden rounded-md">
           <CommandInput placeholder={searchPlaceholder} className="h-10" />
           <CommandList
+            id={listId}
             className="overflow-y-auto"
             onWheel={(e) => e.stopPropagation()}
           >

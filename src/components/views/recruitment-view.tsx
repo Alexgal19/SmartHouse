@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Eye, MoreHorizontal } from 'lucide-react';
+import { Eye, MoreHorizontal, MapPin, CheckCircle2, Truck } from 'lucide-react';
 import AddCandidateDialog from '@/components/dialogs/add-candidate-dialog';
 import { BokStatsDrillDownDialog } from '@/components/dialogs/bok-stats-drill-down-dialog';
 import {
@@ -41,6 +41,15 @@ import {
 } from "@/components/ui/dialog";
 import { OdbiorZakwaterowanieDialog } from '@/components/dialogs/odbior-zakwaterowanie-dialog';
 
+const PASSPORT_HASH_QUICK = 'b8dc2c143be8994682b08461f46487e05874e59dd9ab65cf973e3a3c67a763aa';
+const PASSPORT_HASH_FULL  = '52409f1bf23162b6ceff30dd11275fc9ee01897d7afca9cd09e95f05ef41d7e9';
+
+async function hashInput(input: string): Promise<string> {
+    const data = new TextEncoder().encode(input);
+    const buf  = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export default function RecruitmentView({ currentUser, activeView }: { currentUser: SessionData; activeView: string }) {
     const { t, dateLocale } = useLanguage();
     const { toast } = useToast();
@@ -52,7 +61,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     const isFetchingRef = useRef(false);
     const candidatesRef = useRef<Candidate[]>(allCandidates || []);
     const [searchQuery, setSearchQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState<'all' | 'oczekujace' | 'zatrudniony' | 'nieudana' | 'zakwaterowanie' | 'zatrudniony_do_zakwaterowania'>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'oczekujace' | 'nieudana' | 'zakwaterowanie' | 'zakwaterowana_oczekuje'>('all');
     const [sendingId, setSendingId] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [dialogStep, setDialogStep] = useState<'none' | 'confirm' | 'sure'>('none');
@@ -77,7 +86,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     const [pickupAddress, setPickupAddress] = useState("Brak adresu");
     const [demandRoomNumber, setDemandRoomNumber] = useState("");
     const [hasLuggage, setHasLuggage] = useState<boolean>(false);
-    const [bokDemandLoading, setBokDemandLoading] = useState(false);
+    const [bokDemandLoadingIds, setBokDemandLoadingIds] = useState<Set<string>>(new Set());
 
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -194,7 +203,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     };
 
     const handleBokDemand = async (bokResident: BokResident) => {
-        setBokDemandLoading(true);
+        setBokDemandLoadingIds(prev => new Set(prev).add(bokResident.id));
         try {
             // Reuse existing candidate for this BOK resident instead of creating duplicates
             const existing = candidates.find(c => c.bokId === bokResident.id);
@@ -222,13 +231,13 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 setHasLuggage(false);
                 setDemandDialogOpen(true);
             } else {
-                toast({ variant: "destructive", title: t("common.error"), description: result.error || "Błąd tworzenia kandydata" });
+                toast({ variant: "destructive", title: t("common.error"), description: result.error || t('candidate.createError') });
             }
         } catch (err) {
             console.error(err);
             toast({ variant: "destructive", title: t("common.error"), description: String(err) });
         } finally {
-            setBokDemandLoading(false);
+            setBokDemandLoadingIds(prev => { const s = new Set(prev); s.delete(bokResident.id); return s; });
         }
     };
 
@@ -345,7 +354,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 .map(r => `${r.firstName.trim().toLowerCase()}|${r.lastName.trim().toLowerCase()}`)
         );
         return candidates
-            .filter(c => c.status === 'nowy' || c.status === 'wdrodze' || c.status === 'zakwaterowana' || c.status === 'po_rozmowie' || c.status === 'w_biurze' || c.status === 'w_oczekiwaniu_na_zakwaterowanie')
+            .filter(c => c.status === 'nowy' || c.status === 'wdrodze' || c.status === 'zakwaterowana' || c.status === 'zakwaterowana_oczekuje_na_rozmowe' || c.status === 'po_rozmowie' || c.status === 'w_biurze' || c.status === 'w_oczekiwaniu_na_zakwaterowanie')
             .filter(c => {
                 if (c.bokId && dismissedBokIds.has(c.bokId)) return false;
                 if (c.sourceOdbiorId && dismissedSourceIds.has(c.sourceOdbiorId)) return false;
@@ -360,10 +369,9 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     const filteredCandidates = useMemo(() => {
         return preFilteredCandidates
             .filter(c => {
-                if (statusFilter === 'zatrudniony') return c.status === 'po_rozmowie' && c.interviewOutcome === 'employed';
                 if (statusFilter === 'nieudana') return c.status === 'po_rozmowie' && c.interviewOutcome === 'failed';
                 if (statusFilter === 'zakwaterowanie') return c.status === 'w_oczekiwaniu_na_zakwaterowanie' && (c.interviewOutcome === 'do_zakwaterowania' || !c.interviewOutcome);
-                if (statusFilter === 'zatrudniony_do_zakwaterowania') return c.status === 'w_oczekiwaniu_na_zakwaterowanie' && c.interviewOutcome === 'employed';
+                if (statusFilter === 'zakwaterowana_oczekuje') return c.status === 'zakwaterowana_oczekuje_na_rozmowe' || c.status === 'zakwaterowana';
                 if (statusFilter === 'oczekujace') return ['nowy', 'wdrodze', 'w_biurze'].includes(c.status);
                 return true;
             })
@@ -439,12 +447,12 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             const result = await updateCandidateAction(finishCandidate.id, { status, interviewOutcome: outcome });
             if (result.success) {
                 setCandidates(prev => prev.map(c => c.id === finishCandidate.id ? { ...c, status, interviewOutcome: outcome } : c));
-                toast({ title: 'Status zmieniony', description: `${finishCandidate.firstName} ${finishCandidate.lastName} - ${status === 'w_oczekiwaniu_na_zakwaterowanie' ? 'Do zakwaterowania' : (outcome === 'employed' ? 'Zatrudniony' : 'Nieudana')}` });
+                toast({ title: t('candidate.statusChanged'), description: `${finishCandidate.firstName} ${finishCandidate.lastName}` });
             } else {
-                toast({ variant: 'destructive', title: 'Błąd', description: result.error });
+                toast({ variant: 'destructive', title: t('common.error'), description: result.error });
             }
         } catch (err) {
-            toast({ variant: 'destructive', title: 'Błąd', description: String(err) });
+            toast({ variant: 'destructive', title: t('common.error'), description: String(err) });
         } finally {
             setFinishCandidate(null);
         }
@@ -456,8 +464,9 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         const details = (
             <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
                 {(demand.pickupAddress && demand.pickupAddress !== "Brak adresu") ? (
-                    <div>
-                        📍 {demand.pickupAddress} {demand.roomNumber ? `(Pokój: ${demand.roomNumber})` : ''}
+                    <div className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3 shrink-0" />
+                        {demand.pickupAddress} {demand.roomNumber ? `(${t('demand.room')}: ${demand.roomNumber})` : ''}
                     </div>
                 ) : null}
                 {(demand.sentTo && demand.sentTo.length > 0) ? (
@@ -477,7 +486,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             case 'acknowledged':
                 return (
                     <div className="text-xs text-muted-foreground">
-                        ✅ {t("candidate.acknowledgedBy")}: <span className="font-medium">{demand.acknowledgedBy || '—'}</span>
+                        <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-600" /> {t("candidate.acknowledgedBy")}: <span className="font-medium">{demand.acknowledgedBy || '—'}</span></span>
                         <br />
                         {demand.acknowledgedAt ? format(new Date(demand.acknowledgedAt), "dd.MM.yyyy HH:mm", { locale: dateLocale }) : ''}
                         {details}
@@ -486,7 +495,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             case 'delivered':
                 return (
                     <div className="text-xs text-muted-foreground">
-                        🚚 {t("candidate.demandDelivered").replace('{name}', demand.acknowledgedBy || '—')}
+                        <span className="inline-flex items-center gap-1"><Truck className="w-3 h-3" /> {t("candidate.demandDelivered").replace('{name}', demand.acknowledgedBy || '—')}</span>
                         <br />
                         {demand.acknowledgedAt ? format(new Date(demand.acknowledgedAt), "dd.MM.yyyy HH:mm", { locale: dateLocale }) : ''}
                         {details}
@@ -514,16 +523,18 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 return <Badge variant="outline">{t("candidate.statusZakonczony")}</Badge>;
             case "zakwaterowana":
                 return <Badge variant="default" className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">{t("candidate.statusZakwaterowana")}</Badge>;
+            case "zakwaterowana_oczekuje_na_rozmowe":
+                return <Badge variant="default" className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">{t("candidate.statusZakwaterowanaOczekujeNaRozmowe")}</Badge>;
             case "wdrodze":
                 return <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100">{t("candidate.statusWdrodze")}</Badge>;
             case "w_biurze":
                 return <Badge variant="default" className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">{t("candidate.statusWBiurze")}</Badge>;
             case "w_oczekiwaniu_na_zakwaterowanie":
-                return <Badge variant="default" className="bg-orange-500 text-white border-orange-500 hover:bg-orange-600">Osoba do zakwaterowania</Badge>;
+                return <Badge variant="default" className="bg-orange-500 text-white border-orange-500 hover:bg-orange-600">{t('candidate.statusOsobaDoZakwaterowania')}</Badge>;
             case "po_rozmowie":
-                if (candidate.interviewOutcome === 'employed') return <Badge variant="default" className="bg-green-600 text-white border-green-600 hover:bg-green-700">Po rozmowie - zatrudniony</Badge>;
-                if (candidate.interviewOutcome === 'failed') return <Badge variant="default" className="bg-red-600 text-white border-red-600 hover:bg-red-700">Po rozmowie - nieudana</Badge>;
-                return <Badge variant="default" className="bg-gray-500 text-white border-gray-500 hover:bg-gray-600">Po rozmowie</Badge>;
+                if (candidate.interviewOutcome === 'employed') return <Badge variant="default" className="bg-green-600 text-white border-green-600 hover:bg-green-700">{t('candidate.statusPoRozmoWieZatrudniony')}</Badge>;
+                if (candidate.interviewOutcome === 'failed') return <Badge variant="default" className="bg-red-600 text-white border-red-600 hover:bg-red-700">{t('candidate.statusPoRozmoWieNieudana')}</Badge>;
+                return <Badge variant="default" className="bg-gray-500 text-white border-gray-500 hover:bg-gray-600">{t('candidate.statusPoRozmowie')}</Badge>;
             default:
                 return <Badge>{candidate.status}</Badge>;
         }
@@ -531,12 +542,14 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
 
     const rowBgClass = (status: Candidate["status"]) => {
         switch (status) {
-            case "nowy":         return "";
-            case "wdrodze":      return "bg-blue-50/60 hover:bg-blue-100/60 dark:bg-blue-950/30";
-            case "w_biurze":     return "bg-amber-50/70 hover:bg-amber-100/60 dark:bg-amber-950/30";
-            case "zakwaterowana":return "bg-green-50/60 hover:bg-green-100/60 dark:bg-green-950/30";
-            case "po_rozmowie":  return "bg-green-50/60 hover:bg-green-100/60 dark:bg-green-950/30";
-            default:             return "";
+            case "nowy":                           return "";
+            case "wdrodze":                        return "bg-blue-50/60 hover:bg-blue-100/60 dark:bg-blue-950/30";
+            case "w_biurze":                       return "bg-amber-50/70 hover:bg-amber-100/60 dark:bg-amber-950/30";
+            case "zakwaterowana":                  return "bg-green-50/60 hover:bg-green-100/60 dark:bg-green-950/30";
+            case "zakwaterowana_oczekuje_na_rozmowe": return "bg-green-50/60 hover:bg-green-100/60 dark:bg-green-950/30";
+            case "po_rozmowie":                    return "bg-green-50/60 hover:bg-green-100/60 dark:bg-green-950/30";
+            case "w_oczekiwaniu_na_zakwaterowanie":return "bg-orange-50/60 hover:bg-orange-100/60 dark:bg-orange-950/30";
+            default:                               return "";
         }
     };
 
@@ -548,7 +561,9 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 <h1 className="text-2xl font-bold tracking-tight">{t("nav.recruitment")}</h1>
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                     <div className="w-full sm:w-72">
+                        <label htmlFor="candidate-search" className="sr-only">{t("candidate.searchBySurname")}</label>
                         <Input
+                            id="candidate-search"
                             placeholder={t("candidate.searchBySurname")}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -562,12 +577,13 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 const countAll = preFilteredCandidates.length;
                 const countOczekujace = preFilteredCandidates.filter(c => ['nowy', 'wdrodze', 'w_biurze'].includes(c.status)).length;
                 const countZakwaterowanie = preFilteredCandidates.filter(c => c.status === 'w_oczekiwaniu_na_zakwaterowanie' && (c.interviewOutcome === 'do_zakwaterowania' || !c.interviewOutcome)).length;
-                const countZatrudnionyDoZakwaterowania = preFilteredCandidates.filter(c => c.status === 'w_oczekiwaniu_na_zakwaterowanie' && c.interviewOutcome === 'employed').length;
-                const countZatrudnieni = preFilteredCandidates.filter(c => c.status === 'po_rozmowie' && c.interviewOutcome === 'employed').length;
+                const countZakwaterowanaOczekuje = preFilteredCandidates.filter(c => c.status === 'zakwaterowana_oczekuje_na_rozmowe' || c.status === 'zakwaterowana').length;
                 const countNieudani = preFilteredCandidates.filter(c => c.status === 'po_rozmowie' && c.interviewOutcome === 'failed').length;
                 return (
                     <div className="flex flex-wrap justify-center gap-3 overflow-x-auto px-2 py-1.5">
                         <button
+                            type="button"
+                            aria-pressed={statusFilter === 'all'}
                             onClick={() => setStatusFilter('all')}
                             className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
                                 statusFilter === 'all'
@@ -579,6 +595,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                             <span className="text-xs">{t('candidate.filterAll')}</span>
                         </button>
                         <button
+                            type="button"
+                            aria-pressed={statusFilter === 'oczekujace'}
                             onClick={() => setStatusFilter('oczekujace')}
                             className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
                                 statusFilter === 'oczekujace'
@@ -590,6 +608,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                             <span className="text-xs">{t('candidate.filterPending')}</span>
                         </button>
                         <button
+                            type="button"
+                            aria-pressed={statusFilter === 'zakwaterowanie'}
                             onClick={() => setStatusFilter('zakwaterowanie')}
                             className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
                                 statusFilter === 'zakwaterowanie'
@@ -598,31 +618,24 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                             }`}
                         >
                             <span className="text-2xl font-bold">{countZakwaterowanie}</span>
-                            <span className="text-xs">Osoba do zakwaterowania</span>
+                            <span className="text-xs">{t('candidate.statusOsobaDoZakwaterowania')}</span>
                         </button>
                         <button
-                            onClick={() => setStatusFilter('zatrudniony_do_zakwaterowania')}
+                            type="button"
+                            aria-pressed={statusFilter === 'zakwaterowana_oczekuje'}
+                            onClick={() => setStatusFilter('zakwaterowana_oczekuje')}
                             className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
-                                statusFilter === 'zatrudniony_do_zakwaterowania'
-                                    ? 'border-blue-600 bg-blue-600 text-white shadow-md scale-[1.02]'
-                                    : 'border-blue-400 bg-blue-50 text-blue-700 hover:bg-blue-100'
-                            }`}
-                        >
-                            <span className="text-2xl font-bold">{countZatrudnionyDoZakwaterowania}</span>
-                            <span className="text-xs">Zatrudniony do zakwaterowania</span>
-                        </button>
-                        <button
-                            onClick={() => setStatusFilter('zatrudniony')}
-                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
-                                statusFilter === 'zatrudniony'
+                                statusFilter === 'zakwaterowana_oczekuje'
                                     ? 'border-green-600 bg-green-600 text-white shadow-md scale-[1.02]'
                                     : 'border-green-400 bg-green-50 text-green-700 hover:bg-green-100'
                             }`}
                         >
-                            <span className="text-2xl font-bold">{countZatrudnieni}</span>
-                            <span className="text-xs">Zatrudniony</span>
+                            <span className="text-2xl font-bold">{countZakwaterowanaOczekuje}</span>
+                            <span className="text-xs">{t('candidate.filterZakwaterowanaOczekujeNaRozmowe')}</span>
                         </button>
                         <button
+                            type="button"
+                            aria-pressed={statusFilter === 'nieudana'}
                             onClick={() => setStatusFilter('nieudana')}
                             className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
                                 statusFilter === 'nieudana'
@@ -631,7 +644,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                             }`}
                         >
                             <span className="text-2xl font-bold">{countNieudani}</span>
-                            <span className="text-xs">Nieudana</span>
+                            <span className="text-xs">{t('candidate.filterNieudana')}</span>
                         </button>
                     </div>
                 );
@@ -683,7 +696,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                             return (
                                                 <TableRow
                                                     key={c.id}
-                                                    className={`cursor-pointer transition-colors ${rowBgClass(c.status)} ${!['po_rozmowie', 'zakwaterowana', 'dismissed'].includes(c.status) ? 'animate-blink-light-red' : ''}`}
+                                                    className={`cursor-pointer transition-colors ${rowBgClass(c.status)} ${!['po_rozmowie', 'zakwaterowana', 'zakwaterowana_oczekuje_na_rozmowe', 'dismissed'].includes(c.status) ? 'animate-blink-light-red' : ''}`}
                                                     onClick={() => handleRowClick(c)}
                                                 >
                                                     <TableCell className="font-medium">{c.lastName}</TableCell>
@@ -694,10 +707,11 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                             if (bokPassportVisible) return c.passportNumber;
                                                             return (
                                                                 <button
+                                                                    type="button"
                                                                     className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                                                                    title="Pokaż numer paszportu"
-                                                                    aria-label="Pokaż numer paszportu"
-                                                                    onClick={() => setPassportDialogOpen(true)}
+                                                                    title={t('candidate.passportDialogTitle')}
+                                                                    aria-label={t('candidate.passportDialogTitle')}
+                                                                    onClick={(e) => { e.stopPropagation(); setPassportDialogOpen(true); }}
                                                                 >
                                                                     <Eye className="w-4 h-4" />
                                                                 </button>
@@ -722,7 +736,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                                 </Button>
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
-                                                                {c.status === 'zakwaterowana' && (
+                                                                {(c.status === 'zakwaterowana' || c.status === 'zakwaterowana_oczekuje_na_rozmowe') && (
                                                                     <DropdownMenuItem onClick={() => handleCandidateDemand(c)}>
                                                                         {t("candidate.demandBtn")}
                                                                     </DropdownMenuItem>
@@ -762,9 +776,10 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                         c.status === 'wdrodze'      ? 'border-l-blue-400 bg-blue-50/50 dark:bg-blue-950/20' :
                                         c.status === 'w_biurze'     ? 'border-l-amber-400 bg-amber-50/60 dark:bg-amber-950/20' :
                                         c.status === 'zakwaterowana'? 'border-l-green-400 bg-green-50/50 dark:bg-green-950/20' :
+                                        c.status === 'zakwaterowana_oczekuje_na_rozmowe'? 'border-l-green-400 bg-green-50/50 dark:bg-green-950/20' :
                                         c.status === 'po_rozmowie'  ? 'border-l-green-500 bg-green-50/50 dark:bg-green-950/20' :
                                         'border-l-transparent'
-                                    } ${!['po_rozmowie', 'zakwaterowana', 'dismissed'].includes(c.status) ? 'animate-blink-light-red' : ''}`}
+                                    } ${!['po_rozmowie', 'zakwaterowana', 'zakwaterowana_oczekuje_na_rozmowe', 'dismissed'].includes(c.status) ? 'animate-blink-light-red' : ''}`}
                                     onClick={() => handleRowClick(c)}
                                 >
                                     <CardContent className="p-4 space-y-3">
@@ -777,10 +792,11 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                         if (bokPassportVisible) return c.passportNumber;
                                                         return (
                                                             <button
+                                                                type="button"
                                                                 className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                                                                title="Pokaż numer paszportu"
-                                                                aria-label="Pokaż numer paszportu"
-                                                                onClick={() => setPassportDialogOpen(true)}
+                                                                title={t('candidate.passportDialogTitle')}
+                                                                aria-label={t('candidate.passportDialogTitle')}
+                                                                onClick={(e) => { e.stopPropagation(); setPassportDialogOpen(true); }}
                                                             >
                                                                 <Eye className="w-4 h-4" />
                                                             </button>
@@ -811,11 +827,11 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button size="sm" variant="outline">
-                                                        Akcje
+                                                        {t('col.actions')}
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    {c.status === 'zakwaterowana' && (
+                                                    {(c.status === 'zakwaterowana' || c.status === 'zakwaterowana_oczekuje_na_rozmowe') && (
                                                         <DropdownMenuItem onClick={() => handleCandidateDemand(c)}>
                                                             {t("candidate.demandBtn")}
                                                         </DropdownMenuItem>
@@ -847,12 +863,14 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             {allBokResidents && allBokResidents.length > 0 && (
                 <Card className="mt-6" data-testid="bok-search-section">
                     <CardHeader>
-                        <CardTitle>Wyszukiwanie kandydatow w BOK</CardTitle>
+                        <CardTitle>{t('candidate.bokSearchTitle')}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex flex-col sm:flex-row gap-4">
+                            <label htmlFor="bok-search" className="sr-only">{t('candidate.bokSearchPlaceholder')}</label>
                             <Input
-                                placeholder="Szukaj po nazwisku lub imieniu..."
+                                id="bok-search"
+                                placeholder={t('candidate.bokSearchPlaceholder')}
                                 value={bokSearchQuery}
                                 onChange={(e) => setBokSearchQuery(e.target.value)}
                                 className="flex-1"
@@ -928,14 +946,14 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
-                                                        <TableHead>Nazwisko</TableHead>
-                                                        <TableHead>Imię</TableHead>
-                                                        <TableHead>Data zameldowania</TableHead>
-                                                        <TableHead>Status</TableHead>
-                                                        <TableHead>Nr paszportu</TableHead>
+                                                        <TableHead>{t('col.lastName')}</TableHead>
+                                                        <TableHead>{t('col.firstName')}</TableHead>
+                                                        <TableHead>{t('col.checkIn')}</TableHead>
+                                                        <TableHead>{t('col.status')}</TableHead>
+                                                        <TableHead>{t('col.passport')}</TableHead>
                                                         <TableHead>{t('col.hasPermit')}</TableHead>
                                                         <TableHead>{t('col.hasPesel')}</TableHead>
-                                                        <TableHead className="w-[160px]">Akcje</TableHead>
+                                                        <TableHead className="w-[160px]">{t('col.actions')}</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
@@ -946,8 +964,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                             <TableCell>{r.checkInDate ? format(new Date(r.checkInDate), 'dd.MM.yyyy') : '-'}</TableCell>
                                                             <TableCell>
                                                                 {r.status === 'dismissed'
-                                                                    ? <Badge variant="outline" className="text-xs text-muted-foreground">Zwolniony</Badge>
-                                                                    : <Badge variant="outline" className="text-xs text-green-700 border-green-300">Aktywny</Badge>
+                                                                    ? <Badge variant="outline" className="text-xs text-muted-foreground">{t('common.dismissed')}</Badge>
+                                                                    : <Badge variant="outline" className="text-xs text-green-700 border-green-300">{t('common.active')}</Badge>
                                                                 }
                                                             </TableCell>
                                                             <TableCell>
@@ -956,10 +974,11 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                                     if (bokPassportVisible) return r.passportNumber;
                                                                     return (
                                                                         <button
+                                                                            type="button"
                                                                             className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                                                                            title="Pokaż numer paszportu"
-                                                                            aria-label="Pokaż numer paszportu"
-                                                                            onClick={() => setPassportDialogOpen(true)}
+                                                                            title={t('candidate.passportDialogTitle')}
+                                                                            aria-label={t('candidate.passportDialogTitle')}
+                                                                            onClick={(e) => { e.stopPropagation(); setPassportDialogOpen(true); }}
                                                                         >
                                                                             <Eye className="w-4 h-4" />
                                                                         </button>
@@ -973,10 +992,10 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                                 <Button
                                                                     size="sm"
                                                                     variant="outline"
-                                                                    disabled={bokDemandLoading}
+                                                                    disabled={bokDemandLoadingIds.has(r.id)}
                                                                     onClick={() => handleBokDemand(r)}
                                                                 >
-                                                                    {bokDemandLoading ? t("common.loading") : "Zapotrzebowanie"}
+                                                                    {bokDemandLoadingIds.has(r.id) ? t("common.loading") : t("candidate.bokDemandBtn")}
                                                                 </Button>
                                                                 )}
                                                             </TableCell>
@@ -989,7 +1008,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                     {/* Mobile cards */}
                                     <div className="sm:hidden space-y-3">
                                         {filtered.map(r => (
-                                            <Card key={r.id} className="overflow-hidden">
+                                            <Card key={r.id} className={`overflow-hidden ${r.status === 'dismissed' ? 'opacity-60' : ''}`}>
                                                 <CardContent className="p-4 space-y-2">
                                                     <div className="flex items-start justify-between">
                                                         <div>
@@ -998,21 +1017,25 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                                 {r.checkInDate ? format(new Date(r.checkInDate), 'dd.MM.yyyy') : '-'}
                                                             </p>
                                                         </div>
-                                                        <Badge variant="outline" className="text-xs text-green-700 border-green-300">Aktywny</Badge>
+                                                        {r.status === 'dismissed'
+                                                            ? <Badge variant="outline" className="text-xs text-muted-foreground">Zwolniony</Badge>
+                                                            : <Badge variant="outline" className="text-xs text-green-700 border-green-300">Aktywny</Badge>
+                                                        }
                                                     </div>
                                                     <div className="text-sm">
                                                         {(() => {
-                                                            if (!r.passportNumber) return <span className="text-muted-foreground">Nr paszportu: -</span>;
+                                                            if (!r.passportNumber) return <span className="text-muted-foreground">{t('col.passport')}: -</span>;
                                                             if (bokPassportVisible) return <span className="font-mono">{r.passportNumber}</span>;
                                                             return (
                                                                 <button
+                                                                    type="button"
                                                                     className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                                                                    title="Pokaż numer paszportu"
-                                                                    aria-label="Pokaż numer paszportu"
-                                                                    onClick={() => setPassportDialogOpen(true)}
+                                                                    title={t('candidate.passportDialogTitle')}
+                                                                    aria-label={t('candidate.passportDialogTitle')}
+                                                                    onClick={(e) => { e.stopPropagation(); setPassportDialogOpen(true); }}
                                                                 >
                                                                     <Eye className="w-4 h-4" />
-                                                                    <span className="text-xs">Pokaż paszport</span>
+                                                                    <span className="text-xs">{t('candidate.passportDialogTitle')}</span>
                                                                 </button>
                                                             );
                                                         })()}
@@ -1021,17 +1044,19 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                         <div>{t('col.hasPermit')}: <span className="font-medium">{r.hasPermit ? t('common.yes') : t('common.no')}</span></div>
                                                         <div>{t('col.hasPesel')}: <span className="font-medium">{r.hasPesel ? t('common.yes') : t('common.no')}</span></div>
                                                     </div>
+                                                    {r.status !== 'dismissed' && (
                                                     <div className="pt-1">
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            disabled={bokDemandLoading}
+                                                            disabled={bokDemandLoadingIds.has(r.id)}
                                                             onClick={() => handleBokDemand(r)}
                                                             className="w-full"
                                                         >
-                                                            {bokDemandLoading ? t("common.loading") : "Zapotrzebowanie"}
+                                                            {bokDemandLoadingIds.has(r.id) ? t("common.loading") : t("candidate.bokDemandBtn")}
                                                         </Button>
                                                     </div>
+                                                    )}
                                                 </CardContent>
                                             </Card>
                                         ))}
@@ -1064,7 +1089,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                     onClick={() => setPassportDialogOpen(true)}
                                 >
                                     <Eye className="w-6 h-6" />
-                                    <span>Kliknij aby zobaczyć zdjęcie paszportu</span>
+                                    <span>{t('candidate.passportShowPhoto')}</span>
                                 </div>
                             )
                         ) : (
@@ -1086,19 +1111,20 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             <Dialog open={demandDialogOpen} onOpenChange={setDemandDialogOpen}>
                 <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-sm">
                     <DialogHeader>
-                        <DialogTitle>Zapotrzebowanie na kandydata</DialogTitle>
+                        <DialogTitle>{t('candidate.demandBtn')}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div className="text-sm">
-                            Wybierz przewidywany czas dostarczenia osoby: <strong>{demandCandidate?.firstName} {demandCandidate?.lastName}</strong>
+                            {t('candidate.demandDialogIntro')} <strong>{demandCandidate?.firstName} {demandCandidate?.lastName}</strong>
                         </div>
                         {/* Adres i pokój są pobierane automatycznie z BOK — ukryte w dialogu, widoczne w widoku Zapotrzebowań */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">{t('demand.hasLuggage')}</label>
-                            <div className="flex gap-2">
+                            <p id="luggage-label" className="text-sm font-medium">{t('demand.hasLuggage')}</p>
+                            <div className="flex gap-2" role="group" aria-labelledby="luggage-label">
                                 <Button
                                     type="button"
                                     variant={hasLuggage ? 'default' : 'outline'}
+                                    aria-pressed={hasLuggage}
                                     onClick={() => setHasLuggage(true)}
                                     className="flex-1"
                                 >
@@ -1107,6 +1133,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                 <Button
                                     type="button"
                                     variant={!hasLuggage ? 'default' : 'outline'}
+                                    aria-pressed={!hasLuggage}
                                     onClick={() => setHasLuggage(false)}
                                     className="flex-1"
                                 >
@@ -1115,8 +1142,9 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Czas dostarczenia</label>
+                            <label htmlFor="demand-delivery-time" className="text-sm font-medium">{t('demand.deliveryTime')}</label>
                             <Input
+                                id="demand-delivery-time"
                                 type="time"
                                 value={estimatedTime}
                                 onChange={(e) => setEstimatedTime(e.target.value)}
@@ -1138,7 +1166,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             </Dialog>
 
             {/* Dialog 1: Accept demand? */}
-            <AlertDialog open={dialogStep === 'confirm'}>
+            <AlertDialog open={dialogStep === 'confirm'} onOpenChange={(open) => { if (!open) { setDialogStep('none'); clearDemandParam(); } }}>
                 <AlertDialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-lg">
                     <AlertDialogHeader>
                         <AlertDialogTitle>{t("candidate.acceptDemandTitle")}</AlertDialogTitle>
@@ -1164,7 +1192,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             </AlertDialog>
 
             {/* Dialog 2: Are you sure? */}
-            <AlertDialog open={dialogStep === 'sure'}>
+            <AlertDialog open={dialogStep === 'sure'} onOpenChange={(open) => { if (!open) { setDialogStep('none'); clearDemandParam(); } }}>
                 <AlertDialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-lg">
                     <AlertDialogHeader>
                         <AlertDialogTitle>{t("candidate.areYouSure")}</AlertDialogTitle>
@@ -1182,43 +1210,47 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             <AlertDialog open={passportDialogOpen} onOpenChange={setPassportDialogOpen}>
                 <AlertDialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-lg">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Wprowadź hasło</AlertDialogTitle>
+                        <AlertDialogTitle>{t('candidate.passportDialogTitle')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Aby zobaczyć numer paszportu, wpisz hasło:
+                            {t('candidate.passportDialogDesc')}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+                    <label htmlFor="passport-password" className="sr-only">{t('candidate.passportDialogPlaceholder')}</label>
                     <Input
+                        id="passport-password"
                         type="password"
-                        placeholder="Hasło"
+                        placeholder={t('candidate.passportDialogPlaceholder')}
                         value={passportInput}
                         onChange={(e) => setPassportInput(e.target.value)}
-                        onKeyDown={(e) => {
+                        onKeyDown={async (e) => {
                             if (e.key === 'Enter') {
-                                if (passportInput === '2121') {
+                                const h = await hashInput(passportInput);
+                                if (h === PASSPORT_HASH_QUICK) {
                                     setBokPassportVisible(true);
                                     setPassportDialogOpen(false);
                                     setPassportInput('');
                                     setTimeout(() => setBokPassportVisible(false), 5000);
                                 } else {
-                                    toast({ variant: "destructive", title: "Błąd", description: "Nieprawidłowe hasło" });
+                                    toast({ variant: "destructive", title: t('common.error'), description: t('candidate.passportDialogError') });
                                 }
                             }
                         }}
                     />
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => { setPassportInput(""); setPassportDialogOpen(false); }}>
-                            Anuluj
+                            {t('common.cancel')}
                         </AlertDialogCancel>
-                        <Button onClick={() => {
-                            if (passportInput === 'SWhouse$21') {
+                        <Button onClick={async () => {
+                            const h = await hashInput(passportInput);
+                            if (h === PASSPORT_HASH_FULL) {
                                 setBokPassportVisible(true);
                                 setPassportDialogOpen(false);
                                 setPassportInput("");
-                                toast({ title: "Sukces", description: "Odsłonięto numery paszportów." });
+                                toast({ title: t('common.success'), description: t('candidate.passportDialogSuccess') });
                             } else {
-                                toast({ variant: "destructive", title: "Błąd", description: "Nieprawidłowe hasło" });
+                                toast({ variant: "destructive", title: t('common.error'), description: t('candidate.passportDialogError') });
                             }
-                        }}>Zatwierdź</Button>
+                        }}>{t('common.confirm')}</Button>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -1227,44 +1259,43 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             <AlertDialog open={!!finishCandidate} onOpenChange={(open) => { if (!open) setFinishCandidate(null); }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Zakończenie rozmowy</AlertDialogTitle>
+                        <AlertDialogTitle>{t('candidate.finishDialogTitle')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Wybierz wynik rozmowy rekrutacyjnej dla {finishCandidate?.firstName} {finishCandidate?.lastName}.
+                            {t('candidate.finishDialogDesc')} {finishCandidate?.firstName} {finishCandidate?.lastName}.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <div className="flex flex-col gap-3 py-4">
-                        <Button 
-                            variant="default" 
-                            disabled={finishCandidate?.status === 'zakwaterowana'}
-                            title={finishCandidate?.status === 'zakwaterowana' ? "Osoba już posiada zakwaterowanie" : undefined}
+                        <Button
+                            variant="default"
+                            disabled={finishCandidate?.status === 'zakwaterowana' || finishCandidate?.status === 'zakwaterowana_oczekuje_na_rozmowe'}
                             onClick={() => handleConfirmFinish('w_oczekiwaniu_na_zakwaterowanie', 'do_zakwaterowania')}
                         >
-                            Osoba do zakwaterowania
+                            {t('candidate.statusOsobaDoZakwaterowania')}
                         </Button>
                         <Button
                             variant="outline"
                             className="border-blue-500 text-blue-700 hover:bg-blue-50"
                             onClick={() => handleConfirmFinish('w_oczekiwaniu_na_zakwaterowanie', 'employed')}
                         >
-                            Po rozmowie - zatrudniony - do zakwaterowania
+                            {t('candidate.finishZatrudnionyDoZakwaterowania')}
                         </Button>
                         <Button
                             variant="outline"
                             className="border-green-500 text-green-700 hover:bg-green-50"
                             onClick={() => handleConfirmFinish('po_rozmowie', 'employed')}
                         >
-                            Po rozmowie - zatrudniony
+                            {t('candidate.statusPoRozmoWieZatrudniony')}
                         </Button>
                         <Button
                             variant="outline"
                             className="border-red-500 text-red-700 hover:bg-red-50"
                             onClick={() => handleConfirmFinish('po_rozmowie', 'failed')}
                         >
-                            Po rozmowie - nieudana
+                            {t('candidate.statusPoRozmoWieNieudana')}
                         </Button>
                     </div>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

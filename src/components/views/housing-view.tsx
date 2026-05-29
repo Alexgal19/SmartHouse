@@ -1061,11 +1061,11 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
     // Mobile: open accordion and highlight the card
     setMobileOpenItems([addressId]);
     setDeepLinkedAddressId(addressId);
-    // Scroll the address card into view after render
-    setTimeout(() => {
+    const id = setTimeout(() => {
       const el = document.getElementById(`housing-address-${addressId}`);
       el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 300);
+    return () => clearTimeout(id);
   }, [searchParams, rawHousingData]);
 
   const handleOccupantClick = (occupant: Occupant) => {

@@ -2,11 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import admin from 'firebase-admin';
 import '@/lib/firebase-admin'; // Ensure Firebase Admin is initialized
+import { checkRateLimit } from '@/lib/rate-limiter';
 
 export async function POST(req: NextRequest) {
     const session = await getSession();
     if (!session.isLoggedIn) {
         return NextResponse.json({ error: 'Nieautoryzowany dostęp.' }, { status: 401 });
+    }
+
+    // Rate limiting
+    const identifier = session.uid ? `u:${session.uid}` : `ip:unknown`;
+    const rate = checkRateLimit('/api/odbior/passport-photo', identifier);
+    if (!rate.allowed) {
+        return NextResponse.json(
+            { error: 'Rate limit exceeded. Please try again later.', retryAfterMs: rate.retryAfterMs },
+            { status: 429, headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) } }
+        );
     }
 
     try {

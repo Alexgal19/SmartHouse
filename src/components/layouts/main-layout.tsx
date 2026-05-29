@@ -213,42 +213,21 @@ export default function MainLayout({
     const [unacceptedCount, setUnacceptedCount] = useState(0);
     const wdrodzeCount = useMemo(() => {
         if (!rawCandidates) return 0;
-        
-        const dismissedBokIds = new Set(
-            (rawBokResidents || [])
-                .filter(r => r.status === 'dismissed')
-                .map(r => r.id)
-        );
-        const dismissedSourceIds = new Set(
-            (odbiorEntries || [])
-                .filter(e => e.convertedToBokId && dismissedBokIds.has(e.convertedToBokId))
-                .map(e => e.id)
-        );
-        const dismissedBokNames = new Set(
-            (rawBokResidents || [])
-                .filter(r => r.status === 'dismissed')
-                .map(r => `${r.firstName.trim().toLowerCase()}|${r.lastName.trim().toLowerCase()}`)
-        );
-
-        return rawCandidates
-            .filter(c => c.status === 'nowy' || c.status === 'wdrodze' || c.status === 'zakwaterowana')
-            .filter(c => {
-                if (c.bokId && dismissedBokIds.has(c.bokId)) return false;
-                if (c.sourceOdbiorId && dismissedSourceIds.has(c.sourceOdbiorId)) return false;
-                // Fallback: dopasowanie imienia i nazwiska (dla starych kandydatów bez bokId)
-                // Nie filtrujemy nowych aplikacji (nowy, wdrodze), bo to może być nowe zgłoszenie lub testy
-                if (c.status !== 'nowy' && c.status !== 'wdrodze') {
-                    const nameKey = `${c.firstName.trim().toLowerCase()}|${c.lastName.trim().toLowerCase()}`;
-                    if (dismissedBokNames.has(nameKey)) return false;
-                }
-                return true;
-            }).length;
-    }, [rawCandidates, rawBokResidents, odbiorEntries]);
+        // Licznik pokazuje kandydatów aktywnych w procesie:
+        // w drodze do biura, w biurze, lub zakwaterowanych oczekujących na rozmowę.
+        return rawCandidates.filter(c => ['wdrodze', 'w_biurze', 'zakwaterowana_oczekuje_na_rozmowe'].includes(c.status)).length;
+    }, [rawCandidates]);
     const [pendingDemandsCount, setPendingDemandsCount] = useState(0);
 
     const osobaDoZakwaterowaniaCount = useMemo(() => {
         if (!rawCandidates) return 0;
-        return rawCandidates.filter(c => c.status === 'w_oczekiwaniu_na_zakwaterowanie').length;
+        return rawCandidates.filter(c => {
+            const isDoZakwaterowania = c.interviewOutcome === 'do_zakwaterowania' &&
+                (c.status === 'w_oczekiwaniu_na_zakwaterowanie' || ((c.status === 'zakwaterowana' || c.status === 'zakwaterowana_oczekuje_na_rozmowe') && !c.bokId));
+            const isEmployedDoZakwaterowania = c.interviewOutcome === 'employed' &&
+                (c.status === 'w_oczekiwaniu_na_zakwaterowanie' || ((c.status === 'zakwaterowana' || c.status === 'zakwaterowana_oczekuje_na_rozmowe') && !c.bokId));
+            return isDoZakwaterowania || isEmployedDoZakwaterowania;
+        }).length;
     }, [rawCandidates]);
 
     const [isFormOpen, setIsFormOpen] = useState(false);

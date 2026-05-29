@@ -3,6 +3,7 @@ import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadshee
 import { JWT } from 'google-auth-library';
 import { sendPushNotification } from '@/lib/actions';
 import { getSettings } from '@/lib/sheets';
+import { checkRateLimit } from '@/lib/rate-limiter';
 
 // ─── Config ────────────────────────────────────────────────────────────────
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -186,6 +187,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Rate limiting (by IP for cron/internal calls)
+  const forwarded = req.headers.get('x-forwarded-for');
+  const identifier = forwarded ? `ip:${forwarded.split(',')[0].trim()}` : 'ip:unknown';
+  const rate = checkRateLimit('/api/data-guard', identifier);
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please try again later.', retryAfterMs: rate.retryAfterMs },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) } }
+    );
+  }
+
   try {
     console.log('[DataGuard] Rozpoczynam sprawdzanie danych...');
 
@@ -233,6 +245,17 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   if (!authorize(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Rate limiting (by IP for cron/internal calls)
+  const forwarded = req.headers.get('x-forwarded-for');
+  const identifier = forwarded ? `ip:${forwarded.split(',')[0].trim()}` : 'ip:unknown';
+  const rate = checkRateLimit('/api/data-guard', identifier);
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please try again later.', retryAfterMs: rate.retryAfterMs },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) } }
+    );
   }
 
   try {

@@ -211,7 +211,7 @@ const DateInput = ({
       <div className="relative">
         <input
           ref={inputRef}
-          id={id}
+          id={textMode ? id : undefined}
           type="text"
           value={textValue}
           onChange={(e) => setTextValue(e.target.value)}
@@ -233,7 +233,6 @@ const DateInput = ({
         <PopoverTrigger asChild>
           <button
             type="button"
-            id={id}
             onPointerDown={handlePointerDown}
             className="flex w-full min-h-[44px] items-center rounded-md border border-input bg-background px-3 pr-10 text-sm text-left hover:bg-muted/30"
           >
@@ -415,8 +414,20 @@ export function EditEmployeeForm({
     return coordinator ? [...coordinator.departments].sort((a, b) => a.localeCompare(b)) : [];
   }, [settings.coordinators, selectedCoordinatorId]);
 
+  const initializedForEmployeeId = useRef<string | null>(null);
+  const initializedForNew = useRef<boolean>(false);
+
   useEffect(() => {
+    if (!isOpen) {
+      initializedForEmployeeId.current = null;
+      initializedForNew.current = false;
+      return;
+    }
+
     if (employee) {
+      if (initializedForEmployeeId.current === employee.id) return;
+      initializedForEmployeeId.current = employee.id;
+
       const currentDeductions = employee.deductionReason || [];
       const combinedDeductions = defaultDeductionReasons.map((defaultReason, index) => {
         const existing = currentDeductions.find(r => r.label === defaultReason.label);
@@ -457,6 +468,9 @@ export function EditEmployeeForm({
         deductionEntryDate: parseDate(employee.deductionEntryDate) ?? null,
       });
     } else {
+      if (initializedForNew.current) return;
+      initializedForNew.current = true;
+
       form.reset({
         firstName: initialData?.firstName ?? '',
         lastName: initialData?.lastName ?? '',
@@ -488,7 +502,8 @@ export function EditEmployeeForm({
         deductionEntryDate: null,
       });
     }
-  }, [employee, isOpen, form, settings, currentUser, initialData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee?.id, isOpen, form, settings, currentUser, initialData]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
 

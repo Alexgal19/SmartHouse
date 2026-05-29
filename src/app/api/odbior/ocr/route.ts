@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { extractPassportData } from '@/ai/flows/extract-passport-data-flow';
+import { checkRateLimit } from '@/lib/rate-limiter';
 
 export async function POST(req: NextRequest) {
     const session = await getSession();
@@ -9,6 +10,16 @@ export async function POST(req: NextRequest) {
     }
     if (!session.isAdmin && !session.isDriver) {
         return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
+    }
+
+    // Rate limiting
+    const identifier = session.uid ? `u:${session.uid}` : `ip:unknown`;
+    const rate = checkRateLimit('/api/odbior/ocr', identifier);
+    if (!rate.allowed) {
+        return NextResponse.json(
+            { error: 'Rate limit exceeded. Please try again later.', retryAfterMs: rate.retryAfterMs },
+            { status: 429, headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) } }
+        );
     }
 
     try {

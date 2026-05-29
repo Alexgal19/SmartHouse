@@ -340,7 +340,7 @@ export type Candidate = {
   passportPhotoUrl?: string;
   sourceOdbiorId?: string | null;
   bokId?: string | null;
-  status: 'nowy' | 'wdrodze' | 'w_trakcie' | 'zakonczony' | 'zakwaterowana' | 'po_rozmowie' | 'w_biurze' | 'w_oczekiwaniu_na_zakwaterowanie';
+  status: 'nowy' | 'wdrodze' | 'w_trakcie' | 'zakonczony' | 'zakwaterowana' | 'zakwaterowana_oczekuje_na_rozmowe' | 'po_rozmowie' | 'w_biurze' | 'w_oczekiwaniu_na_zakwaterowanie';
   interviewOutcome?: 'failed' | 'employed' | 'do_zakwaterowania' | null;
   createdAt: string;
   interviewHistory: InterviewResult[];

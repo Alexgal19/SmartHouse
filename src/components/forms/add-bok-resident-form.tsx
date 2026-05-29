@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import * as z from 'zod';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -45,7 +45,7 @@ export function AddBokResidentForm({
                 onOpenChange={onOpenChange}
                 onSave={onSave}
                 onDismiss={onDismiss}
-                onDelete={onDelete}
+                _onDelete={onDelete}
                 settings={settings}
                 resident={resident}
                 currentUser={currentUser}
@@ -96,7 +96,7 @@ function AddBokResidentWizard({
         hasPesel: boolean;
     };
 
-    const makeDefault = (): WizardData => ({
+    const makeDefault = useCallback((): WizardData => ({
         firstName: '',
         lastName: '',
         nationality: '',
@@ -110,7 +110,7 @@ function AddBokResidentWizard({
         comments: '',
         hasPermit: false,
         hasPesel: false,
-    });
+    }), []);
 
     const steps = [
         t('wizardStep.person'),

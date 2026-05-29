@@ -45,7 +45,7 @@ export default function OsobaDoZakwaterowaniaView({ currentUser }: OsobaDoZakwat
         setLoadingId(candidate.id);
         try {
             await updateCandidateAction(candidate.id, {
-                status: 'zakwaterowana'
+                status: 'zakwaterowana_oczekuje_na_rozmowe'
             });
             toast.success(t('common.success') || "Zaakceptowano osobę do zakwaterowania");
             // Open BOK housing dialog immediately after acceptance
@@ -63,9 +63,9 @@ export default function OsobaDoZakwaterowaniaView({ currentUser }: OsobaDoZakwat
         return (allCandidates || []).filter(c => {
             // Show only candidates explicitly assigned for housing via outcome buttons
             const isDoZakwaterowania = c.interviewOutcome === 'do_zakwaterowania' &&
-                (c.status === 'w_oczekiwaniu_na_zakwaterowanie' || (c.status === 'zakwaterowana' && !c.bokId));
+                (c.status === 'w_oczekiwaniu_na_zakwaterowanie' || ((c.status === 'zakwaterowana' || c.status === 'zakwaterowana_oczekuje_na_rozmowe') && !c.bokId));
             const isEmployedDoZakwaterowania = c.interviewOutcome === 'employed' &&
-                (c.status === 'w_oczekiwaniu_na_zakwaterowanie' || (c.status === 'zakwaterowana' && !c.bokId));
+                (c.status === 'w_oczekiwaniu_na_zakwaterowanie' || ((c.status === 'zakwaterowana' || c.status === 'zakwaterowana_oczekuje_na_rozmowe') && !c.bokId));
             return isDoZakwaterowania || isEmployedDoZakwaterowania;
         }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [allCandidates]);
@@ -130,7 +130,7 @@ export default function OsobaDoZakwaterowaniaView({ currentUser }: OsobaDoZakwat
                                                 </div>
                                                 <Button
                                                     size="sm"
-                                                    disabled={candidate.status === 'zakwaterowana' || loadingId === candidate.id}
+                                                    disabled={(candidate.status === 'zakwaterowana' || candidate.status === 'zakwaterowana_oczekuje_na_rozmowe') || loadingId === candidate.id}
                                                     onClick={(e) => handleAcceptClick(e, candidate)}
                                                 >
                                                     {loadingId === candidate.id ? "Zapisywanie..." : "Akceptuję"}

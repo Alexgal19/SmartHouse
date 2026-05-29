@@ -136,3 +136,10 @@
 .animate-blink-light-red {
   animation: blink-light-red 2.5s infinite ease-in-out !important;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-blink-red,
+  .animate-blink-light-red {
+    animation: none !important;
+  }
+}

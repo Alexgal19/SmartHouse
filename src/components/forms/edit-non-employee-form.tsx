@@ -146,7 +146,7 @@ const DateInput = ({
       <div className="relative">
         <input
           ref={inputRef}
-          id={id}
+          id={textMode ? id : undefined}
           type="text"
           value={textValue}
           onChange={(e) => setTextValue(e.target.value)}
@@ -168,7 +168,6 @@ const DateInput = ({
         <PopoverTrigger asChild>
           <button
             type="button"
-            id={id}
             onPointerDown={handlePointerDown}
             className="flex w-full min-h-[44px] items-center rounded-md border border-input bg-background px-3 pr-10 text-sm text-left hover:bg-muted/30"
           >
@@ -323,8 +322,20 @@ export function EditNonEmployeeForm({
     });
   }, [settings.addresses, selectedAddress, allEmployees, allNonEmployees, allBokResidents]);
 
+  const initializedForEmployeeId = useRef<string | null>(null);
+  const initializedForNew = useRef<boolean>(false);
+
   useEffect(() => {
+    if (!isOpen) {
+      initializedForEmployeeId.current = null;
+      initializedForNew.current = false;
+      return;
+    }
+
     if (nonEmployee) {
+      if (initializedForEmployeeId.current === nonEmployee.id) return;
+      initializedForEmployeeId.current = nonEmployee.id;
+
       const neAddress = settings.addresses.find(a => a.name === nonEmployee.address);
       const neLocality = neAddress ? neAddress.locality : '';
       form.reset({
@@ -338,6 +349,9 @@ export function EditNonEmployeeForm({
         comments: nonEmployee.comments ?? '',
       });
     } else {
+      if (initializedForNew.current) return;
+      initializedForNew.current = true;
+
       form.reset({
         firstName: '',
         lastName: '',
@@ -355,7 +369,8 @@ export function EditNonEmployeeForm({
         paymentAmount: null,
       });
     }
-  }, [nonEmployee, isOpen, form, settings.addresses, currentUser]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nonEmployee?.id, isOpen, form, settings.addresses, currentUser]);
 
   const watchedCheckOutDate = useWatch({ control: form.control, name: 'checkOutDate' });
   const canDismiss = !!(watchedCheckOutDate instanceof Date && isValid(watchedCheckOutDate));

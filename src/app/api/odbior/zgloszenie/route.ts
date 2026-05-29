@@ -6,6 +6,7 @@ import '@/lib/firebase-admin';
 import { getSettings } from '@/lib/sheets';
 import { sendPushNotification } from '@/lib/actions';
 import { format } from 'date-fns';
+import { checkRateLimit, getIdentifier } from '@/lib/rate-limiter';
 
 export async function POST(req: NextRequest) {
     const session = await getSession();
@@ -14,6 +15,16 @@ export async function POST(req: NextRequest) {
     }
     if (!session.isAdmin && !session.isDriver) {
         return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
+    }
+
+    // Rate limiting
+    const identifier = session.uid ? `u:${session.uid}` : getIdentifier(req);
+    const rate = checkRateLimit('/api/odbior/zgloszenie', identifier);
+    if (!rate.allowed) {
+        return NextResponse.json(
+            { error: 'Rate limit exceeded. Please try again later.', retryAfterMs: rate.retryAfterMs },
+            { status: 429, headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) } }
+        );
     }
 
     try {

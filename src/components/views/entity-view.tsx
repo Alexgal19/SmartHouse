@@ -509,6 +509,18 @@ const ControlPanel = ({
     )
 }
 
+function ExportButton({ onClick, count }: { onClick: () => void; count: number }) {
+    const { t } = useLanguage();
+    return (
+        <div className="flex justify-end mb-2">
+            <Button variant="outline" size="sm" onClick={onClick} disabled={count === 0}>
+                <Download className="mr-2 h-4 w-4" />
+                {t('entity.exportExcel', { count })}
+            </Button>
+        </div>
+    );
+}
+
 export default function EntityView({ currentUser }: { currentUser: SessionData }) {
     const { t } = useLanguage();
     const {
@@ -934,15 +946,6 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     }
 
 
-
-    const ExportButton = ({ onClick, count }: { onClick: () => void; count: number }) => (
-        <div className="flex justify-end mb-2">
-            <Button variant="outline" size="sm" onClick={onClick} disabled={count === 0}>
-                <Download className="mr-2 h-4 w-4" />
-                {t('entity.exportExcel', { count })}
-            </Button>
-        </div>
-    );
 
     const renderContent = (data: Entity[], isBokTab: boolean = false, isDismissed: boolean = false, customTotalPages?: number) => (
         <>

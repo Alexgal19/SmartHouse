@@ -619,7 +619,8 @@ function KartaWTrakcie({
             const isAllCompleted = localOsoby.every(o => o.statusKrok === 'completed');
             if (isAllCompleted && localOsoby.length > lastCompletedCountRef.current) {
                 lastCompletedCountRef.current = localOsoby.length;
-                setTimeout(() => setAddPersonOpen(true), 300); // 300ms delay to allow previous animations to finish
+                const id = setTimeout(() => setAddPersonOpen(true), 300);
+                return () => clearTimeout(id);
             }
         }
     }, [localOsoby, z.iloscOsob]);

@@ -26,6 +26,7 @@
 | 15 | UI / Dane — filtrowanie | Dane łączone z dwóch źródeł z różnymi ścieżkami ID: zawsze dodawaj fallback przez name matching. `sourceOdbiorId` może być null — nie polegaj wyłącznie na ID-linku. |
 | 16 | React / UI | Znikające stany po re-renderach w formularzach – używaj stałych referencji (np. `useMemo`) zamiast przekazywać obiekty `{...}` bezpośrednio do propów. |
 | 17 | Bazy Danych / Formularze | Nie udawaj rekordu do Edycji z przypisanym sztucznym ID w celu utworzenia nowego – użyj `prefillData`, unikniesz błędu "nie istnieje". |
+| 18 | React / Hooks | Ślepe dodawanie funkcji resetujących (np. `makeDefault`) do `useEffect deps` by uciszyć linter = form reset loop. Zawsze używaj `useCallback` lub wynieś funkcję. |
 
 
 ### [React / UI] Znikające stany w formularzach (Oszukiwanie referencji)
@@ -45,6 +46,19 @@
 **Rozwiązanie:** Zabrania się "oszukiwania" formularzy hybrydowych (tworzonych dla trybów both Edycja/Tworzenie). Należy używać odpowiednich flag przeznaczonych dla trybu tworzenia (w tym wypadku `prefillData`) aby nie aktywować logiki UPDATE.
 **Obszar ryzyka:** Złożone komponenty okien Dialogowych służące zarówno do edycji i tworzenia rekordów (np. Wizardy).
 **Pliki:** `src/components/osoba-do-zakwaterowania-view.tsx`
+
+---
+
+### [React / Hooks] Ślepe dodawanie funkcji do tablicy zależności (Form reset loop)
+
+**Symptom:** Użytkownik wpisuje tekst w formularzu, ale po naciśnięciu dowolnego klawisza formularz wraca do stanu początkowego (resetuje się) i traci focus.
+**Root cause:** Linter ESLint zgłasza `warning: exhaustive-deps` o brakującej funkcji pomocniczej (np. `makeDefault`, `getInitialState`) w tablicy zależności `useEffect`. Deweloper lub Agent AI "naprawia" ostrzeżenie lintera, ślepo dodając tę funkcję do tablicy. Ponieważ funkcja jest definiowana inline i nie jest owinięta w `useCallback`, zmienia swoją referencję przy każdym renderze. To powoduje, że `useEffect` odpala się po każdej zmianie stanu (każdym wpisanym znaku) i bezwarunkowo nadpisuje stan pustymi, domyślnymi danymi.
+**Rozwiązanie:** Zamiast ślepo wrzucać funkcje do `[deps]`, aby uciszyć linter:
+1. Owiń funkcję w `useCallback(..., [])` (lub z wymaganymi zależnościami),
+2. Lub przenieś funkcję całkowicie poza ciało komponentu (najlepsze rozwiązanie, gdy funkcja nie używa propsów i lokalnego stanu),
+3. Lub wyłącz regułę lokalnie `// eslint-disable-next-line react-hooks/exhaustive-deps` (mniej preferowane).
+**Obszar ryzyka:** Wszystkie efekty typu `useEffect(() => { setData(makeDefault()); }, [isOpen])`, gdzie funkcja generująca dane jest zdefiniowana wewnątrz komponentu.
+**Pliki:** Wszystkie formularze i wizardy.
 
 ---
 

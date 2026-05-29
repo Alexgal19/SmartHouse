@@ -1,9 +1,41 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-var-requires */
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import RecruitmentView from '@/components/views/recruitment-view';
 import type { SessionData, Candidate, CandidateDemand } from '@/types';
+
+// Polyfill crypto.subtle.digest + TextEncoder for jsdom (passport password hashing)
+const nodeCrypto = require('crypto');
+const subtleMock = {
+    digest: async (_algorithm: string, data: ArrayBuffer | ArrayBufferView) => {
+        const buf = Buffer.isBuffer(data) ? data : Buffer.from(data as any);
+        const hash = nodeCrypto.createHash('sha256').update(buf).digest();
+        return hash.buffer.slice(hash.byteOffset, hash.byteOffset + hash.byteLength);
+    }
+};
+Object.defineProperty(global, 'crypto', {
+    value: { subtle: subtleMock },
+    writable: true,
+    configurable: true,
+});
+if (typeof window !== 'undefined') {
+    Object.defineProperty(window, 'crypto', {
+        value: { subtle: subtleMock },
+        writable: true,
+        configurable: true,
+    });
+}
+// jsdom doesn't provide TextEncoder
+if (typeof global.TextEncoder === 'undefined') {
+    const { TextEncoder, TextDecoder } = require('util');
+    Object.defineProperty(global, 'TextEncoder', { value: TextEncoder });
+    Object.defineProperty(global, 'TextDecoder', { value: TextDecoder });
+    if (typeof window !== 'undefined') {
+        Object.defineProperty(window, 'TextEncoder', { value: TextEncoder });
+        Object.defineProperty(window, 'TextDecoder', { value: TextDecoder });
+    }
+}
 
 let mockDemandId: string | null = null;
 const mockReplace = jest.fn();
@@ -335,7 +367,7 @@ describe('RecruitmentView', () => {
 
         const passwordInput = screen.getByPlaceholderText('Hasło');
         fireEvent.change(passwordInput, { target: { value: 'SWhouse$21' } });
-        fireEvent.click(screen.getByRole('button', { name: /Zatwierdź/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Potwierdź/i }));
 
         await waitFor(() => {
             const img = screen.getByAltText('Paszport') as HTMLImageElement;
