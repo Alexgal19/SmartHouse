@@ -44,8 +44,12 @@ export default function OsobaDoZakwaterowaniaView({ currentUser }: OsobaDoZakwat
         setConfirmCandidate(null);
         setLoadingId(candidate.id);
         try {
+            const newStatus = candidate.interviewOutcome === 'employed'
+                ? 'zakwaterowana'
+                : 'zakwaterowana_oczekuje_na_rozmowe';
+
             await updateCandidateAction(candidate.id, {
-                status: 'zakwaterowana_oczekuje_na_rozmowe'
+                status: newStatus
             });
             toast.success(t('common.success') || "Zaakceptowano osobę do zakwaterowania");
             // Open BOK housing dialog immediately after acceptance

@@ -61,7 +61,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     const isFetchingRef = useRef(false);
     const candidatesRef = useRef<Candidate[]>(allCandidates || []);
     const [searchQuery, setSearchQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState<'all' | 'oczekujace' | 'nieudana' | 'zakwaterowanie' | 'zakwaterowana_oczekuje'>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'oczekujace' | 'nieudana' | 'zakwaterowanie' | 'zakwaterowana_oczekuje' | 'zakwaterowana_zatrudniona'>('all');
     const [sendingId, setSendingId] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [dialogStep, setDialogStep] = useState<'none' | 'confirm' | 'sure'>('none');
@@ -371,7 +371,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             .filter(c => {
                 if (statusFilter === 'nieudana') return c.status === 'po_rozmowie' && c.interviewOutcome === 'failed';
                 if (statusFilter === 'zakwaterowanie') return c.status === 'w_oczekiwaniu_na_zakwaterowanie' && (c.interviewOutcome === 'do_zakwaterowania' || !c.interviewOutcome);
-                if (statusFilter === 'zakwaterowana_oczekuje') return c.status === 'zakwaterowana_oczekuje_na_rozmowe' || c.status === 'zakwaterowana';
+                if (statusFilter === 'zakwaterowana_oczekuje') return c.status === 'zakwaterowana_oczekuje_na_rozmowe';
+                if (statusFilter === 'zakwaterowana_zatrudniona') return c.status === 'zakwaterowana';
                 if (statusFilter === 'oczekujace') return ['nowy', 'wdrodze', 'w_biurze'].includes(c.status);
                 return true;
             })
@@ -577,13 +578,13 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 const countAll = preFilteredCandidates.length;
                 const countOczekujace = preFilteredCandidates.filter(c => ['nowy', 'wdrodze', 'w_biurze'].includes(c.status)).length;
                 const countZakwaterowanie = preFilteredCandidates.filter(c => c.status === 'w_oczekiwaniu_na_zakwaterowanie' && (c.interviewOutcome === 'do_zakwaterowania' || !c.interviewOutcome)).length;
-                const countZakwaterowanaOczekuje = preFilteredCandidates.filter(c => c.status === 'zakwaterowana_oczekuje_na_rozmowe' || c.status === 'zakwaterowana').length;
+                const countZakwaterowanaOczekuje = preFilteredCandidates.filter(c => c.status === 'zakwaterowana_oczekuje_na_rozmowe').length;
+                const countZakwaterowanaZatrudniona = preFilteredCandidates.filter(c => c.status === 'zakwaterowana').length;
                 const countNieudani = preFilteredCandidates.filter(c => c.status === 'po_rozmowie' && c.interviewOutcome === 'failed').length;
                 return (
                     <div className="flex flex-wrap justify-center gap-3 overflow-x-auto px-2 py-1.5">
                         <button
                             type="button"
-                            aria-pressed={statusFilter === 'all'}
                             onClick={() => setStatusFilter('all')}
                             className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
                                 statusFilter === 'all'
@@ -596,7 +597,6 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                         </button>
                         <button
                             type="button"
-                            aria-pressed={statusFilter === 'oczekujace'}
                             onClick={() => setStatusFilter('oczekujace')}
                             className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
                                 statusFilter === 'oczekujace'
@@ -609,7 +609,6 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                         </button>
                         <button
                             type="button"
-                            aria-pressed={statusFilter === 'zakwaterowanie'}
                             onClick={() => setStatusFilter('zakwaterowanie')}
                             className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
                                 statusFilter === 'zakwaterowanie'
@@ -622,7 +621,6 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                         </button>
                         <button
                             type="button"
-                            aria-pressed={statusFilter === 'zakwaterowana_oczekuje'}
                             onClick={() => setStatusFilter('zakwaterowana_oczekuje')}
                             className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
                                 statusFilter === 'zakwaterowana_oczekuje'
@@ -635,7 +633,18 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                         </button>
                         <button
                             type="button"
-                            aria-pressed={statusFilter === 'nieudana'}
+                            onClick={() => setStatusFilter('zakwaterowana_zatrudniona')}
+                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
+                                statusFilter === 'zakwaterowana_zatrudniona'
+                                    ? 'border-indigo-600 bg-indigo-600 text-white shadow-md scale-[1.02]'
+                                    : 'border-indigo-400 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                            }`}
+                        >
+                            <span className="text-2xl font-bold">{countZakwaterowanaZatrudniona}</span>
+                            <span className="text-xs">{t('candidate.filterZakwaterowanaZatrudniona')}</span>
+                        </button>
+                        <button
+                            type="button"
                             onClick={() => setStatusFilter('nieudana')}
                             className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
                                 statusFilter === 'nieudana'
@@ -1275,6 +1284,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                         <Button
                             variant="outline"
                             className="border-blue-500 text-blue-700 hover:bg-blue-50"
+                            disabled={finishCandidate?.status === 'zakwaterowana' || finishCandidate?.status === 'zakwaterowana_oczekuje_na_rozmowe'}
                             onClick={() => handleConfirmFinish('w_oczekiwaniu_na_zakwaterowanie', 'employed')}
                         >
                             {t('candidate.finishZatrudnionyDoZakwaterowania')}

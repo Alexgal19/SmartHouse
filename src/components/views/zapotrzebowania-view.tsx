@@ -55,8 +55,8 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
             const demandData = await getCandidateDemandsAction();
             setDemands(demandData);
         } catch (err) {
-            console.error(err);
-            toast({ variant: "destructive", title: t("common.error"), description: String(err) });
+            console.error("loadData silent error:", err);
+            // Nie pokazujemy toasta, bo aplikacja i tak odświeża się w tle co 5 sekund
         } finally {
             isFetchingRef.current = false;
             setLoading(false);
@@ -87,21 +87,25 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
     }, [loadData]);
 
     const handleAcceptDemand = async (demandId: string) => {
+        const previousDemands = [...demands];
+        setDemands(prev => prev.map(d =>
+            d.id === demandId
+                ? { ...d, status: 'acknowledged', acknowledgedBy: currentUser.name, acknowledgedAt: new Date().toISOString() }
+                : d
+        ));
+
         try {
             const result = await acknowledgeCandidateDemandAction(demandId, currentUser.name);
             if (result.success) {
-                setDemands(prev => prev.map(d =>
-                    d.id === demandId
-                        ? { ...d, status: 'acknowledged', acknowledgedBy: currentUser.name, acknowledgedAt: new Date().toISOString() }
-                        : d
-                ));
                 toast({ title: t("common.success"), description: t("demand.accepted") });
                 window.dispatchEvent(new Event('demands-updated'));
-                await loadData();
+                loadData();
             } else {
+                setDemands(previousDemands);
                 toast({ variant: "destructive", title: t("common.error"), description: result.error || "Wystąpił błąd" });
             }
         } catch (err) {
+            setDemands(previousDemands);
             console.error(err);
             toast({ variant: "destructive", title: t("common.error"), description: String(err) });
         }
@@ -110,17 +114,22 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
     const handleDeleteDemand = async (demandId: string) => {
         if (!currentUser.isRekrutacja && !currentUser.isAdmin) return;
         setDeletingId(demandId);
+        
+        const previousDemands = [...demands];
+        setDemands(prev => prev.filter(d => d.id !== demandId));
+
         try {
             const result = await deleteCandidateDemandAction(demandId, currentUser.uid);
             if (result.success) {
-                setDemands(prev => prev.filter(d => d.id !== demandId));
                 toast({ title: t("common.success"), description: t("demand.deleted") });
                 window.dispatchEvent(new Event('demands-updated'));
-                await loadData();
+                loadData();
             } else {
+                setDemands(previousDemands);
                 toast({ variant: "destructive", title: t("common.error"), description: result.error || "Wystąpił błąd" });
             }
         } catch (err) {
+            setDemands(previousDemands);
             console.error(err);
             toast({ variant: "destructive", title: t("common.error"), description: String(err) });
         } finally {
@@ -129,21 +138,25 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
     };
 
     const handleDeliverDemand = async (demandId: string) => {
+        const previousDemands = [...demands];
+        setDemands(prev => prev.map(d =>
+            d.id === demandId
+                ? { ...d, status: 'delivered', acknowledgedBy: currentUser.name, acknowledgedAt: new Date().toISOString() }
+                : d
+        ));
+
         try {
             const result = await deliverCandidateDemandAction(demandId, currentUser.name);
             if (result.success) {
-                setDemands(prev => prev.map(d =>
-                    d.id === demandId
-                        ? { ...d, status: 'delivered', acknowledgedBy: currentUser.name, acknowledgedAt: new Date().toISOString() }
-                        : d
-                ));
                 toast({ title: t("common.success"), description: t("demand.markedDelivered") });
                 window.dispatchEvent(new Event('demands-updated'));
-                await loadData();
+                loadData();
             } else {
+                setDemands(previousDemands);
                 toast({ variant: "destructive", title: t("common.error"), description: result.error || "Wystąpił błąd" });
             }
         } catch (err) {
+            setDemands(previousDemands);
             console.error(err);
             toast({ variant: "destructive", title: t("common.error"), description: String(err) });
         }

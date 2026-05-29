@@ -2826,8 +2826,14 @@ export async function addOdbiorZakwaterowanieAction(
 
         // Also update or add as a candidate in Recruitment
         if (input.sourceCandidateId) {
+            const candidates = await getCandidatesFromSheet();
+            const existingCandidate = candidates.find(c => c.id === input.sourceCandidateId);
+            const newStatus = existingCandidate?.interviewOutcome === 'employed'
+                ? 'zakwaterowana'
+                : 'zakwaterowana_oczekuje_na_rozmowe';
+
             await updateCandidateInSheet(input.sourceCandidateId, {
-                status: 'zakwaterowana_oczekuje_na_rozmowe',
+                status: newStatus,
                 sourceOdbiorId: input.sourceOdbiorId || null,
                 bokId: bok.id,
             });

@@ -729,7 +729,7 @@ function KartaWTrakcie({
         try { await onAction('odrzuc', {}); } finally { setLoading(false); }
     };
 
-    const isAllCompleted = localOsoby.length > 0 && localOsoby.every(o => o.statusKrok === 'completed');
+    const isAllCompleted = localOsoby.length === z.iloscOsob && localOsoby.every(o => o.statusKrok === 'completed');
 
     const handleTryZakoncz = () => {
         if (!isAllCompleted) return;
