@@ -1874,9 +1874,9 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
     const qualifiedAddresses = useMemo(() => {
         if (!rawSettings) return [];
         return rawSettings.addresses.filter(addr => {
+            if (currentUser.isAdmin) return true;
             if (!addr.isActive) return false;
             if (isPrivateAddress(addr.name)) return false;
-            if (currentUser.isAdmin) return true;
             return addr.coordinatorIds.includes(currentUser.uid);
         });
     }, [rawSettings, currentUser]);
