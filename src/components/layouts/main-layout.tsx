@@ -34,7 +34,6 @@ import {
     deleteAddressHistoryEntry,
     migrateFullNames,
     bulkDeleteEmployeesByDepartment,
-    sendPushNotification,
     updateCoordinatorSubscription,
     getCandidatesAction,
     getCandidateDemandsAction,
@@ -168,7 +167,6 @@ export default function MainLayout({
     const { t } = useLanguage();
     const router = useRouter();
     const routerRef = useRef(router);
-    const pathname = usePathname();
     const searchParams = useSearchParams();
 
     const navItems = useMemo(() => [
@@ -577,7 +575,7 @@ export default function MainLayout({
             window.removeEventListener('settings-updated', handleSettingsUpdate);
             window.removeEventListener('employees-updated', handleSettingsUpdate);
         };
-    }, [currentUser]);
+    }, [currentUser, refreshData]);
 
     useEffect(() => {
         const pathname = window.location.pathname;
