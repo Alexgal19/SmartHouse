@@ -10,7 +10,7 @@ import { MobileNav } from '@/components/layouts/mobile-nav';
 import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, AddressHistory, BokResident, OdbiorEntry, Candidate, CandidateDemand } from '@/types';
 import { Home, Settings as SettingsIcon, Users, Building, ClipboardCheck, Truck, Briefcase, ClipboardList } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
-import { mergeWithOptimistic } from '@/lib/merge-optimistic';
+import { mergeWithOptimistic, trackDeletedEntityId } from '@/lib/merge-optimistic';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
     addEmployee,
@@ -734,6 +734,7 @@ export default function MainLayout({
 
     const handleDeleteNonEmployee = useCallback(async (id: string, actorUid: string) => {
         if (!currentUser) return;
+        trackDeletedEntityId(id);
         const originalNonEmployees = rawNonEmployees;
         setRawNonEmployees(prev => prev ? prev.filter(r => r.id !== id) : null);
 
@@ -748,6 +749,7 @@ export default function MainLayout({
 
     const handleDeleteBokResident = useCallback(async (id: string, actorUid: string) => {
         if (!currentUser) return;
+        trackDeletedEntityId(id);
         const originalBokResidents = rawBokResidents;
         setRawBokResidents(prev => prev ? prev.filter(r => r.id !== id) : null);
 
@@ -762,6 +764,7 @@ export default function MainLayout({
 
     const handleBulkDeleteBokResidents = useCallback(async (ids: string[]) => {
         if (!currentUser) return;
+        trackDeletedEntityId(ids);
         const originalBokResidents = rawBokResidents;
         setRawBokResidents(prev => prev ? prev.filter(r => !ids.includes(r.id)) : null);
         try {
@@ -878,7 +881,12 @@ export default function MainLayout({
 
         try {
             await bulkDeleteEmployees(status, currentUser.uid);
-            setRawEmployees(prev => prev ? prev.filter(e => e.status !== status) : null);
+            setRawEmployees(prev => {
+                if (!prev) return null;
+                const idsToDelete = prev.filter(e => e.status === status).map(e => e.id);
+                trackDeletedEntityId(idsToDelete);
+                return prev.filter(e => e.status !== status);
+            });
             toast({ title: t('common.success'), description: status === 'active' ? t('toast.bulkDeleteActive') : t('toast.bulkDeleteDismissed') });
             window.dispatchEvent(new Event('employees-updated'));
             return true;
@@ -896,7 +904,12 @@ export default function MainLayout({
 
         try {
             await bulkDeleteEmployeesByCoordinator(coordinatorId, currentUser.uid);
-            setRawEmployees(prev => prev ? prev.filter(e => e.coordinatorId !== coordinatorId) : null);
+            setRawEmployees(prev => {
+                if (!prev) return null;
+                const idsToDelete = prev.filter(e => e.coordinatorId === coordinatorId).map(e => e.id);
+                trackDeletedEntityId(idsToDelete);
+                return prev.filter(e => e.coordinatorId !== coordinatorId);
+            });
             toast({ title: t('common.success'), description: t('toast.bulkDeleteByCoordinator') });
             window.dispatchEvent(new Event('employees-updated'));
             return true;
@@ -914,7 +927,12 @@ export default function MainLayout({
 
         try {
             await bulkDeleteEmployeesByDepartment(department, currentUser.uid);
-            setRawEmployees(prev => prev ? prev.filter(e => e.zaklad !== department) : null);
+            setRawEmployees(prev => {
+                if (!prev) return null;
+                const idsToDelete = prev.filter(e => e.zaklad === department).map(e => e.id);
+                trackDeletedEntityId(idsToDelete);
+                return prev.filter(e => e.zaklad !== department);
+            });
             toast({ title: t('common.success'), description: t('toast.bulkDeleteByDepartment', { dept: department }) });
             window.dispatchEvent(new Event('employees-updated'));
             return true;
@@ -1017,6 +1035,7 @@ export default function MainLayout({
 
     const handleDeleteEmployee = useCallback(async (employeeId: string, actorUid: string) => {
         if (!currentUser) return;
+        trackDeletedEntityId(employeeId);
         const originalEmployees = rawEmployees;
         setRawEmployees(prev => prev ? prev.filter(e => e.id !== employeeId) : null);
 

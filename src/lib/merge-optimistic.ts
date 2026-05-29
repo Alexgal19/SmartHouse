@@ -5,12 +5,24 @@
  * Also handles race conditions where the UI optimistically sets status: 'dismissed'
  * but a concurrent serverless instance or cached GET request returns status: 'active'.
  */
+
+const deletedEntityIds = new Set<string>();
+
+export function trackDeletedEntityId(id: string | string[]) {
+    if (Array.isArray(id)) {
+        id.forEach(i => deletedEntityIds.add(i));
+    } else {
+        deletedEntityIds.add(id);
+    }
+}
+
 export function mergeWithOptimistic<T extends { id: string }>(current: T[] | null, fresh: T[]): T[] {
-    if (!current || current.length === 0) return fresh;
-    const freshIds = new Set(fresh.map((item) => item.id));
+    const filteredFresh = fresh.filter(item => !deletedEntityIds.has(item.id));
+    if (!current || current.length === 0) return filteredFresh;
+    const freshIds = new Set(filteredFresh.map((item) => item.id));
     const optimisticExtras = current.filter((item) => !freshIds.has(item.id));
 
-    const mergedFresh = fresh.map(freshItem => {
+    const mergedFresh = filteredFresh.map(freshItem => {
         const currentItem = current.find(c => c.id === freshItem.id);
         if (currentItem) {
             // Treat as any to safely check status and checkOutDate fields
