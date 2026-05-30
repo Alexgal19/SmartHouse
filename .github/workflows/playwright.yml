@@ -30,6 +30,14 @@ jobs:
         TEST_ADMIN_NAME: ${{ secrets.TEST_ADMIN_NAME || 'admin' }}
         TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD || 'stub' }}
         TEST_BASE_URL: http://localhost:3000
+        # Wymagane do poprawnego działania aplikacji Next.js w tle
+        IRON_SESSION_PASSWORD: ${{ secrets.IRON_SESSION_PASSWORD || 'ci-stub-password-32-chars-minimum!!' }}
+        ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD || 'stub' }}
+        GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL || 'ci@example.com' }}
+        GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY || '{}' }}
+        GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID || 'stub' }}
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'stub' }}
+        VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY || 'stub' }}
 
     - uses: actions/upload-artifact@v4
       if: always()
