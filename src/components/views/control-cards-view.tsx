@@ -801,7 +801,7 @@ function StartListForm({
 // ─── Form Dialog ─────────────────────────────────────────────────────────────
 
 function ControlCardDialog({
-    open, onClose, address, existingCard, currentUser, selectedMonth, startList, onSaved, onStartListSaved, onNoMetersToggled, onDeleted,
+    open, onClose, address, existingCard, currentUser, selectedMonth, startList, onSaved, onStartListSaved, onNoMetersToggled, onDeleted, focusCommentId
 }: {
     open: boolean;
     onClose: () => void;
@@ -814,6 +814,7 @@ function ControlCardDialog({
     onStartListSaved: (sl: StartList) => void;
     onNoMetersToggled: (addressId: string, value: boolean) => void;
     onDeleted: (cardId: string) => void;
+    focusCommentId?: string | null;
 }) {
     const { t } = useLanguage();
     const { toast } = useToast();
@@ -823,7 +824,7 @@ function ControlCardDialog({
     );
 
     const slComplete = isStartListComplete(startList);
-    const [activeTab, setActiveTab] = useState<'startlist' | 'control'>(slComplete ? 'control' : 'startlist');
+    const [activeTab, setActiveTab] = useState<'startlist' | 'control'>(focusCommentId ? 'control' : slComplete ? 'control' : 'startlist');
     const prevOpenRef = React.useRef(false);
 
     React.useEffect(() => {
@@ -831,10 +832,10 @@ function ControlCardDialog({
         prevOpenRef.current = open;
         if (justOpened) {
             setForm(existingCard ? buildFormFromCard(existingCard, address) : buildDefaultForm(address));
-            setActiveTab(slComplete ? 'control' : 'startlist');
+            setActiveTab(focusCommentId ? 'control' : slComplete ? 'control' : 'startlist');
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, existingCard, address, slComplete]);
+    }, [open, existingCard, address, slComplete, focusCommentId]);
 
     const handleTabChange = (val: string) => {
         if (val === 'control' && !slComplete && !currentUser.isAdmin) return;
@@ -1056,6 +1057,30 @@ function ControlCardDialog({
 
     const [openRoomId, setOpenRoomId] = useState<string | null>(null);
     const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+    React.useEffect(() => {
+        if (open && focusCommentId) {
+            // Check if it's a room ID
+            const isRoom = address.rooms?.some(r => r.id === focusCommentId) || false;
+            if (isRoom) {
+                setOpenRoomId(focusCommentId);
+            }
+        }
+    }, [open, focusCommentId, address.rooms]);
+
+    React.useEffect(() => {
+        if (open && focusCommentId && activeTab === 'control') {
+            const timer = setTimeout(() => {
+                const el = document.getElementById(`comment-${focusCommentId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.focus();
+                    // Optional flash effect could go here
+                }
+            }, 350);
+            return () => clearTimeout(timer);
+        }
+    }, [open, focusCommentId, activeTab]);
 
     const toggleRoom = (roomId: string) => {
         setOpenRoomId(prev => prev === roomId ? null : roomId);
@@ -1283,11 +1308,12 @@ function ControlCardDialog({
                                                         <div className="space-y-1.5">
                                                             <Label className="text-xs font-medium">{t('controlCards.roomComment')}</Label>
                                                             <Textarea
+                                                                id={`comment-${rr.roomId}`}
                                                                 disabled={!canEdit}
                                                                 placeholder={t('controlCards.roomCommentPlaceholder')}
                                                                 value={rr.comment || ''}
                                                                 onChange={(e) => setRoomComment(rr.roomId, e.target.value)}
-                                                                className="min-h-[60px] text-xs resize-none"
+                                                                className="min-h-[60px] text-xs resize-none scroll-mt-32 focus:ring-primary focus:border-primary transition-all"
                                                             />
                                                         </div>
                                                         {canEdit && (
@@ -1466,6 +1492,7 @@ function ControlCardDialog({
                                             </button>
                                         )}
                                         <Textarea
+                                            id={`comment-${comment.id}`}
                                             disabled={!canEdit}
                                             placeholder={t('controlCards.commentTextareaPlaceholder')}
                                             value={comment.text}
@@ -1473,7 +1500,7 @@ function ControlCardDialog({
                                                 ...prev,
                                                 comments: prev.comments.map(c => c.id === comment.id ? { ...c, text: e.target.value } : c)
                                             }))}
-                                            className="min-h-[60px] resize-none text-sm"
+                                            className="min-h-[60px] resize-none text-sm scroll-mt-32 focus:ring-primary focus:border-primary transition-all"
                                         />
                                         {comment.createdAt && (
                                             <p className="text-[10px] text-muted-foreground">
@@ -1809,6 +1836,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
     const { toast } = useToast();
     const { t, dateLocale } = useLanguage();
     const searchParams = useSearchParams();
+    const focusCommentId = searchParams.get('commentId');
 
     const monthOptions = useMemo(() => getMonthOptions(dateLocale), [dateLocale]);
     const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value);
@@ -2109,6 +2137,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
                     onStartListSaved={handleStartListSaved}
                     onNoMetersToggled={handleNoMetersToggled}
                     onDeleted={handleCardDeleted}
+                    focusCommentId={focusCommentId}
                 />
             )}
         </div>

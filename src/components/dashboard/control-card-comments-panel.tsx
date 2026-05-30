@@ -103,8 +103,8 @@ interface Props {
 
 export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
   const { t } = useLanguage();
-  const [items, setItems] = useState<CommentItem[] | null>(null);
-  const [total, setTotal] = useState(0);
+  const [allComments, setAllComments] = useState<CommentItem[] | null>(null);
+  const [statusFilter, setStatusFilter] = useState<ControlCardCommentStatus | 'Aktywne' | 'Wszystkie'>('Aktywne');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
@@ -117,7 +117,7 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
       const { updateControlCardCommentStatusAction } = await import('@/lib/actions');
       const res = await updateControlCardCommentStatusAction(cardId, commentId, newStatus);
       if (res.success) {
-        setItems(prev => prev?.map(it => it.commentId === commentId ? { ...it, status: newStatus } : it) ?? null);
+        setAllComments(prev => prev?.map(it => it.commentId === commentId ? { ...it, status: newStatus } : it) ?? null);
         toast({ title: t('dashboard.statusUpdated') });
       } else {
         toast({ title: t('dashboard.statusUpdateError'), description: res.error, variant: 'destructive' });
@@ -137,8 +137,7 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
       if (!res.ok) throw new Error('HTTP error');
       const cards: ControlCard[] = await res.json();
       const all = extractComments(cards, settings.addresses, currentUser.uid, currentUser.isAdmin);
-      setTotal(all.length);
-      setItems(all.slice(0, LIMIT));
+      setAllComments(all);
     } catch {
       setError(true);
     } finally {
@@ -156,32 +155,63 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const filteredComments = allComments?.filter(item => {
+    if (statusFilter === 'Wszystkie') return true;
+    if (statusFilter === 'Aktywne') return item.status === 'Nie przyjęte' || item.status === 'W trakcie';
+    return item.status === statusFilter;
+  }) ?? null;
+
+  const items = filteredComments?.slice(0, LIMIT) ?? null;
+  const total = filteredComments?.length ?? 0;
   const hasComments = items !== null && items.length > 0;
 
   return (
     <Card>
-      <CardHeader className="pb-2 flex flex-row items-center justify-between">
-        <CardTitle className="text-sm font-semibold flex items-center gap-2">
-          {hasComments
-            ? <Bell className="h-4 w-4 text-red-500" />
-            : items?.length === 0
-              ? <BellOff className="h-4 w-4 text-green-500" />
-              : <Bell className="h-4 w-4 text-muted-foreground" />}
-          {t('dashboard.controlCardComments')}
-          {hasComments && (
-            <Badge variant="destructive" className="text-xs h-5 px-1.5">{total}</Badge>
-          )}
-        </CardTitle>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs"
-          onClick={() => fetchComments(true)}
-          disabled={refreshing}
-        >
-          <RefreshCw className={`h-3 w-3 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
-          {t('common.refresh')}
-        </Button>
+      <CardHeader className="pb-2 space-y-3">
+        <div className="flex flex-row items-center justify-between">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            {hasComments
+              ? <Bell className="h-4 w-4 text-red-500" />
+              : items?.length === 0
+                ? <BellOff className="h-4 w-4 text-green-500" />
+                : <Bell className="h-4 w-4 text-muted-foreground" />}
+            {t('dashboard.controlCardComments')}
+            {hasComments && (
+              <Badge variant="destructive" className="text-xs h-5 px-1.5">{total}</Badge>
+            )}
+          </CardTitle>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() => fetchComments(true)}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-3 w-3 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
+            {t('common.refresh')}
+          </Button>
+        </div>
+        
+        <div className="flex flex-wrap gap-1.5">
+          {(['Aktywne', 'Wszystkie', 'Nie przyjęte', 'W trakcie', 'Temat rozwiązany'] as const).map(filter => (
+            <button
+              key={filter}
+              onClick={() => setStatusFilter(filter)}
+              className={`px-2 py-0.5 text-[10px] font-medium rounded-full border transition-all ${
+                statusFilter === filter
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background text-muted-foreground border-border hover:bg-muted'
+              }`}
+            >
+              {filter === 'Aktywne' ? '🔥' : filter === 'Wszystkie' ? '📋' : filter === 'Nie przyjęte' ? '🔴' : filter === 'W trakcie' ? '🟡' : '🟢'} {
+                filter === 'Nie przyjęte' ? t('controlCards.commentStatusNew') :
+                filter === 'W trakcie' ? t('controlCards.commentStatusInProgress') :
+                filter === 'Temat rozwiązany' ? t('controlCards.commentStatusResolved') :
+                filter
+              }
+            </button>
+          ))}
+        </div>
       </CardHeader>
 
       <CardContent>
@@ -198,9 +228,9 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
                 {i > 0 && <div className="border-t border-muted my-2" />}
                 <div className="relative rounded-md hover:bg-muted/50 transition-colors -mx-2 px-2 py-1 group">
                   <Link
-                    href={`/dashboard/control-cards?address=${item.addressId}`}
-                    className="block space-y-0.5"
-                  >
+                  href={`/dashboard/control-cards?address=${item.addressId}&commentId=${item.commentId}`}
+                  className="block space-y-0.5"
+                >
                     <p className="text-xs font-medium text-foreground flex items-center gap-1">
                       {item.coordinator}
                       {item.locality
