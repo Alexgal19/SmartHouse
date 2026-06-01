@@ -23,6 +23,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { AddressForm } from '@/components/forms/address-form';
+import { CoordinatorForm } from '@/components/forms/coordinator-form';
 import { useMainLayout } from '@/components/layouts/main-layout';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '../ui/badge';
@@ -186,6 +187,7 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: F
 const CoordinatorManager = ({ form, fields, append, remove, departments }: { form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: UseFieldArrayAppend<z.infer<typeof formSchema>, "coordinators">, remove: UseFieldArrayRemove, departments: string[] }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [visibleFields, setVisibleFields] = useState<Record<string, { name: boolean, pass: boolean }>>({});
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const { t } = useLanguage();
     const watchedCoordinators = useWatch({ control: form.control, name: 'coordinators' });
 
@@ -221,11 +223,21 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full sm:w-64 h-10"
                     />
-                    <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false, isDriver: false, isRekrutacja: false, departments: [], visibilityMode: 'department' })}>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setIsAddModalOpen(true)}>
                         <PlusCircle className="mr-2 h-4 w-4" /> {t('settings.addCoordinator')}
                     </Button>
                 </div>
             </div>
+
+            <CoordinatorForm
+                isOpen={isAddModalOpen}
+                onOpenChange={setIsAddModalOpen}
+                onSave={(data) => {
+                    append(data);
+                    setIsAddModalOpen(false);
+                }}
+                departments={departments}
+            />
 
             <Accordion type="multiple" className="w-full space-y-2">
                 {filteredFields.map((field) => (
