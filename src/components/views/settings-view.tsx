@@ -447,6 +447,21 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                 />
                                 <FormField
                                     control={form.control}
+                                    name={`coordinators.${field.originalIndex}.isBok`}
+                                    render={({ field: bokField }) => (
+                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                            <FormControl>
+                                                <Switch checked={bokField.value || false} onCheckedChange={bokField.onChange} />
+                                            </FormControl>
+                                            <FormLabel className="font-normal">
+                                                Uprawnienia BOK
+                                            </FormLabel>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
                                     name={`coordinators.${field.originalIndex}.canEditPastControlCards`}
                                     render={({ field: editCardsField }) => (
                                         <FormItem className="flex flex-row items-center space-x-3 space-y-0">
