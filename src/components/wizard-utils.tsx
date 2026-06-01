@@ -288,6 +288,7 @@ export function OcrCameraButton({
                             type="button"
                             onClick={() => setOpen(false)}
                             className="absolute top-2 right-2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+                            aria-label="Zamknij"
                         >
                             <X className="h-4 w-4" />
                         </button>
