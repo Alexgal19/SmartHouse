@@ -1369,20 +1369,7 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
         },
     });
 
-    useEffect(() => {
-        form.reset({
-            nationalities: rawSettings.nationalities.map(n => ({ value: n })).sort((a, b) => a.value.localeCompare(b.value)),
-            departments: rawSettings.departments.map(d => ({ value: d })).sort((a, b) => a.value.localeCompare(b.value)),
-            genders: rawSettings.genders.map(g => ({ value: g })).sort((a, b) => a.value.localeCompare(b.value)),
-            localities: rawSettings.localities.map(l => ({ value: l })).sort((a, b) => a.value.localeCompare(b.value)),
-            paymentTypesNZ: rawSettings.paymentTypesNZ.map(p => ({ value: p })).sort((a, b) => a.value.localeCompare(b.value)),
-            statuses: (rawSettings.statuses || []).map(s => ({ value: s })).sort((a, b) => a.value.localeCompare(b.value)),
-            bokRoles: (rawSettings.bokRoles || []).map(r => ({ value: r })).sort((a, b) => a.value.localeCompare(b.value)),
-            bokReturnOptions: (rawSettings.bokReturnOptions || []).map(r => ({ value: r })).sort((a, b) => a.value.localeCompare(b.value)),
-            addresses: [...rawSettings.addresses].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
-            coordinators: [...rawSettings.coordinators].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
-        });
-    }, [rawSettings, form]);
+
 
     const { fields: natFields, append: appendNat, remove: removeNat } = useFieldArray({ control: form.control, name: 'nationalities' });
     const { fields: depFields, append: appendDep, remove: removeDep } = useFieldArray({ control: form.control, name: 'departments' });
