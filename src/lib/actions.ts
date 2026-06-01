@@ -216,7 +216,7 @@ const serializeNotification = (notification: Notification): Record<string, strin
     };
 };
 
-const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'isDriver', 'isRekrutacja', 'departments', 'password', 'visibilityMode', 'pushSubscription'];
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'isDriver', 'isRekrutacja', 'isBok', 'canEditPastControlCards', 'departments', 'password', 'visibilityMode', 'pushSubscription'];
 const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds', 'isActive', 'noMetersRequired'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
@@ -1449,39 +1449,58 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                     await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Coordinators)');
                 }, 1000);
 
+                const actuallyToUpdate = toUpdate.filter(coord => {
+                    const row = currentRows.find(r => r.get('uid') === coord.uid);
+                    if (!row) return false;
+                    
+                    const newIsAdmin = String(coord.isAdmin).toUpperCase();
+                    const newIsDriver = String(coord.isDriver || false).toUpperCase();
+                    const newIsRekrutacja = String(coord.isRekrutacja || false).toUpperCase();
+                    const newIsBok = String(coord.isBok || false).toUpperCase();
+                    const newCanEditPastControlCards = String(coord.canEditPastControlCards || false).toUpperCase();
+                    const newDepartments = coord.departments.join(',');
+                    const newVisibilityMode = coord.visibilityMode || 'department';
+
+                    let hasChanges = false;
+                    if (row.get('name') !== coord.name) hasChanges = true;
+                    if (String(row.get('isAdmin') || 'FALSE').toUpperCase() !== newIsAdmin) hasChanges = true;
+                    if (String(row.get('isDriver') || 'FALSE').toUpperCase() !== newIsDriver) hasChanges = true;
+                    if (String(row.get('isRekrutacja') || 'FALSE').toUpperCase() !== newIsRekrutacja) hasChanges = true;
+                    if (String(row.get('isBok') || 'FALSE').toUpperCase() !== newIsBok) hasChanges = true;
+                    if (String(row.get('canEditPastControlCards') || 'FALSE').toUpperCase() !== newCanEditPastControlCards) hasChanges = true;
+                    if (row.get('departments') !== newDepartments) hasChanges = true;
+                    if (row.get('visibilityMode') !== newVisibilityMode) hasChanges = true;
+                    if (coord.password && row.get('password') !== coord.password) hasChanges = true;
+                    
+                    return hasChanges;
+                });
+
                 // Throttled Coordinator Updates
-                await batchPromises(toUpdate, 1, async (coord) => {
+                await batchPromises(actuallyToUpdate, 5, async (coord) => {
                     const row = currentRows.find(r => r.get('uid') === coord.uid);
                     if (row) {
                         const newIsAdmin = String(coord.isAdmin).toUpperCase();
                         const newIsDriver = String(coord.isDriver || false).toUpperCase();
                         const newIsRekrutacja = String(coord.isRekrutacja || false).toUpperCase();
+                        const newIsBok = String(coord.isBok || false).toUpperCase();
+                        const newCanEditPastControlCards = String(coord.canEditPastControlCards || false).toUpperCase();
                         const newDepartments = coord.departments.join(',');
                         const newVisibilityMode = coord.visibilityMode || 'department';
 
-                        let hasChanges = false;
-                        if (row.get('name') !== coord.name) hasChanges = true;
-                        if (String(row.get('isAdmin')).toUpperCase() !== newIsAdmin) hasChanges = true;
-                        if (String(row.get('isDriver') || 'FALSE').toUpperCase() !== newIsDriver) hasChanges = true;
-                        if (String(row.get('isRekrutacja') || 'FALSE').toUpperCase() !== newIsRekrutacja) hasChanges = true;
-                        if (row.get('departments') !== newDepartments) hasChanges = true;
-                        if (row.get('visibilityMode') !== newVisibilityMode) hasChanges = true;
-                        if (coord.password && row.get('password') !== coord.password) hasChanges = true;
-
-                        if (hasChanges) {
-                            row.set('name', coord.name);
-                            row.set('isAdmin', newIsAdmin);
-                            row.set('isDriver', newIsDriver);
-                            row.set('isRekrutacja', newIsRekrutacja);
-                            row.set('departments', newDepartments);
-                            row.set('visibilityMode', newVisibilityMode);
-                            if (coord.password) {
-                                row.set('password', coord.password);
-                            }
-                            await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Coordinators)');
+                        row.set('name', coord.name);
+                        row.set('isAdmin', newIsAdmin);
+                        row.set('isDriver', newIsDriver);
+                        row.set('isRekrutacja', newIsRekrutacja);
+                        row.set('isBok', newIsBok);
+                        row.set('canEditPastControlCards', newCanEditPastControlCards);
+                        row.set('departments', newDepartments);
+                        row.set('visibilityMode', newVisibilityMode);
+                        if (coord.password) {
+                            row.set('password', coord.password);
                         }
+                        await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Coordinators)');
                     }
-                }, 1000);
+                }, 100);
 
                 if (toAdd.length > 0) {
                     await withTimeout(sheet.addRows(toAdd.map(c => ({
@@ -1490,6 +1509,8 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                         isAdmin: String(c.isAdmin).toUpperCase(),
                         isDriver: String(c.isDriver || false).toUpperCase(),
                         isRekrutacja: String(c.isRekrutacja || false).toUpperCase(),
+                        isBok: String(c.isBok || false).toUpperCase(),
+                        canEditPastControlCards: String(c.canEditPastControlCards || false).toUpperCase(),
                         visibilityMode: c.visibilityMode || 'department',
                         pushSubscription: c.pushSubscription || '',
                     })), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRows(Coordinators)');

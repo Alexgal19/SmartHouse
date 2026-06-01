@@ -606,6 +606,8 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet, bypassCache = false)
                 isAdmin: rowObj.isAdmin === 'TRUE',
                 isDriver: rowObj.isDriver === 'TRUE',
                 isRekrutacja: rowObj.isRekrutacja === 'TRUE',
+                isBok: rowObj.isBok === 'TRUE',
+                canEditPastControlCards: rowObj.canEditPastControlCards === 'TRUE',
                 departments: (rowObj?.departments as string || '').split(',').filter(Boolean),
                 password: rowObj.password as string,
                 visibilityMode: (rowObj.visibilityMode as 'department' | 'strict') || 'department',
