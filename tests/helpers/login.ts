@@ -7,6 +7,7 @@
  * Usage:
  *   import { loginAsAdmin } from './helpers/login';
  *   await loginAsAdmin(page);
+ *   await loginAsAdmin(page, '/dashboard/settings');
  */
 import type { Page } from '@playwright/test';
 
@@ -20,17 +21,52 @@ if (!ADMIN_NAME || !ADMIN_PASSWORD) {
     );
 }
 
-export async function loginAsAdmin(page: Page): Promise<void> {
-    await page.goto(`${BASE_URL}/login`);
+/**
+ * Log in as admin and wait until the dashboard has fully loaded (HouseLoader gone,
+ * nav sidebar visible). Optionally pass a targetUrl to land on after login.
+ *
+ * NOTE: Google Sheets data loading can take 30-60s — ensure test timeout is ≥ 120s.
+ */
+export async function loginAsAdmin(page: Page, targetUrl = '/dashboard'): Promise<void> {
+    // Navigate to login, passing callbackUrl so the server redirects us there after auth
+    await page.goto(`${BASE_URL}/login?callbackUrl=${encodeURIComponent(targetUrl)}`);
     await page.waitForLoadState('networkidle');
 
+    // Fill credentials — click first to ensure React synthetic events fire in WebKit
+    await page.locator('#name').click();
+    await page.locator('#name').fill(ADMIN_NAME);
+    await page.locator('#password').click();
+    await page.locator('#password').fill(ADMIN_PASSWORD);
+
+    // Confirm the submit button is ready
+    const submitButton = page.locator('button[type="submit"]');
+    await submitButton.waitFor({ state: 'visible' });
+
+    // In Next.js/WebKit, React hydration can miss the first synthetic fill event — refill to be safe
     await page.locator('#name').fill(ADMIN_NAME);
     await page.locator('#password').fill(ADMIN_PASSWORD);
 
-    await page.locator('button[type="submit"]').click();
+    await submitButton.click();
 
-    await page.waitForURL(`${BASE_URL}/dashboard**`);
-    await page.waitForLoadState('networkidle');
+    // Wait for the browser to land on the dashboard URL (login sets cookie + router.push)
+    await page.waitForURL(`${BASE_URL}/dashboard**`, { timeout: 20_000 });
+
+    // Wait for Google Sheets data to load: the HouseLoader ("Wczytywanie danych...") must
+    // disappear, meaning settings + employees have been fetched and the layout rendered.
+    // This can take 30-60s on first load — that's expected with the Google Sheets backend.
+    await page.waitForFunction(
+        () => {
+            // HouseLoader renders a <p> with "Wczytywanie danych..."
+            const loaderParagraph = document.querySelector('p');
+            if (!loaderParagraph) return true; // no paragraph = loader not present
+            const text = loaderParagraph.textContent || '';
+            return !text.includes('Wczytywanie');
+        },
+        { timeout: 90_000, polling: 1000 }
+    );
+
+    // Extra grace for React to finish hydration after data arrives
+    await page.waitForTimeout(500);
 }
 
 export function recruitmentUrl(): string {
@@ -38,5 +74,5 @@ export function recruitmentUrl(): string {
 }
 
 export function dashboardUrl(view = 'dashboard'): string {
-    return `${BASE_URL}/dashboard?view=${view}`;
+    return view === 'dashboard' ? `${BASE_URL}/dashboard` : `${BASE_URL}/dashboard/${view}`;
 }

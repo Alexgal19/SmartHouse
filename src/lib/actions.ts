@@ -2577,11 +2577,17 @@ export async function setAddressNoMetersRequiredAction(
     value: boolean
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        await requireAdmin();
+        const session = await requireSession();
         const sheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Addresses/noMeters)');
         const row = rows.find(r => r.get('id') === addressId);
         if (!row) return { success: false, error: 'Nie znaleziono adresu' };
+
+        const coordinatorIdsRaw = String(row.get('coordinatorIds') || '');
+        const coordinatorIds = coordinatorIdsRaw.split(',').map(s => s.trim()).filter(Boolean);
+        if (!session.isAdmin && !coordinatorIds.includes(session.uid)) {
+            throw new Error('Brak uprawnień do tego adresu');
+        }
 
         row.set('noMetersRequired', value ? 'TRUE' : 'FALSE');
         await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Addresses/noMeters)');

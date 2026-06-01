@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect, useRef, ChangeEvent } from 'react';
+import { useState, useMemo, useRef, ChangeEvent } from 'react';
 import { useForm, useFieldArray, useWatch, UseFieldArrayAppend, UseFieldArrayRemove, Control, FieldPath } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -21,7 +21,7 @@ import { Skeleton, SkeletonAccordion, SkeletonTable } from '@/components/ui/skel
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AddressForm } from '@/components/forms/address-form';
 import { CoordinatorForm } from '@/components/forms/coordinator-form';
 import { useMainLayout } from '@/components/layouts/main-layout';
@@ -37,6 +37,7 @@ const coordinatorSchema = z.object({
     isAdmin: z.boolean(),
     isDriver: z.boolean().optional(),
     isRekrutacja: z.boolean().optional(),
+    isBok: z.boolean().optional(),
     canEditPastControlCards: z.boolean().optional(),
     departments: z.array(z.string()),
     visibilityMode: z.enum(['department', 'strict']).default('department'),
@@ -234,7 +235,10 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                 isOpen={isAddModalOpen}
                 onOpenChange={setIsAddModalOpen}
                 onSave={(data) => {
-                    append(data);
+                    append({
+                        ...data,
+                        visibilityMode: data.visibilityMode || 'department'
+                    });
                     setIsAddModalOpen(false);
                 }}
                 departments={departments}
@@ -242,7 +246,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
 
             <Accordion type="multiple" className="w-full space-y-2">
                 {filteredFields.map((field) => (
-                    <AccordionItem value={field.id} key={field.id} className="border rounded-md px-4 animate-slide-up" style={{ animationDelay: `${field.originalIndex * 50}ms` }}>
+                    <AccordionItem value={field.id} key={field.id} className="border rounded-md px-4 animate-slide-up">
                         <AccordionTrigger>
                             {(() => {
                                 const coord = watchedCoordinators?.[field.originalIndex];
@@ -593,7 +597,7 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
 
                         const isExpanded = expandedAddressId === address.id;
                         return (
-                            <div key={address.id} className="rounded-lg border p-3 animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+                            <div key={address.id} className="rounded-lg border p-3 animate-slide-up">
                                 <div className="flex items-center justify-between">
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">

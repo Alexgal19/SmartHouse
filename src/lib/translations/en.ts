@@ -217,6 +217,7 @@ export const en = {
     'settings.coordinators': 'Coordinators',
     'settings.searchCoordinator': 'Search coordinator...',
     'settings.addCoordinator': 'Add coordinator',
+    'settings.editCoordinator': 'Edit coordinator',
     'settings.saveSettings': 'Save settings',
     'settings.nationalities': 'Nationalities',
     'settings.departments': 'Departments',

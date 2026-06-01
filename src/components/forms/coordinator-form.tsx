@@ -122,7 +122,10 @@ export function CoordinatorForm({
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)}>
+                    <form onSubmit={(e) => {
+                        e.stopPropagation();
+                        form.handleSubmit(onSubmit)(e);
+                    }}>
                         <ScrollArea className="h-[60vh] -mr-6 pr-6">
                             <div className="space-y-4 p-1">
                                 <FormField

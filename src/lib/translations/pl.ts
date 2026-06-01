@@ -217,6 +217,7 @@ export const pl = {
     'settings.coordinators': 'Koordynatorzy',
     'settings.searchCoordinator': 'Szukaj koordynatora...',
     'settings.addCoordinator': 'Dodaj koordynatora',
+    'settings.editCoordinator': 'Edytuj koordynatora',
     'settings.saveSettings': 'Zapisz ustawienia',
     'settings.nationalities': 'Narodowości',
     'settings.departments': 'Zakłady',

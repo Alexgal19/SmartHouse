@@ -711,7 +711,7 @@ function StartListForm({
                 <NumberField label={t('controlCards.placesCount')} value={form.placesCount} onChange={(n) => setForm(p => ({ ...p, placesCount: n }))} min={1} />
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border">
                 <Label className="font-medium text-sm">{t('controlCards.hasBalcony')}</Label>
                 <Switch checked={form.hasBalcony} onCheckedChange={(v) => setForm(p => ({ ...p, hasBalcony: v }))} />
             </div>
@@ -746,7 +746,7 @@ function StartListForm({
                     <span className="text-base">📷</span> {t('controlCards.photos')}
                 </h3>
                 <div className="space-y-3">
-                    <div className="p-3 rounded-lg border bg-muted/20">
+                    <div className="p-3 rounded-lg border bg-muted/10">
                         <PhotoUploadWidget
                             label={`🍳 ${t('controlCards.kitchen')}`} photoUrls={form.kitchenPhotoUrls} isUploading={!!uploading.kitchenPhotoUrls} canEdit={true}
                             onAddPhotos={(e) => handleAddPhotos('kitchenPhotoUrls', e)}
@@ -754,7 +754,7 @@ function StartListForm({
                             onLightbox={setLightboxImage}
                         />
                     </div>
-                    <div className="p-3 rounded-lg border bg-muted/20">
+                    <div className="p-3 rounded-lg border bg-muted/10">
                         <PhotoUploadWidget
                             label={`🚿 ${t('controlCards.bathroom')}`} photoUrls={form.bathroomPhotoUrls} isUploading={!!uploading.bathroomPhotoUrls} canEdit={true}
                             onAddPhotos={(e) => handleAddPhotos('bathroomPhotoUrls', e)}
@@ -762,7 +762,7 @@ function StartListForm({
                             onLightbox={setLightboxImage}
                         />
                     </div>
-                    <div className="p-3 rounded-lg border bg-muted/20">
+                    <div className="p-3 rounded-lg border bg-muted/10">
                         <PhotoUploadWidget
                             label={`🛏️ ${t('controlCards.rooms')}`} photoUrls={form.roomsPhotoUrls} isUploading={!!uploading.roomsPhotoUrls} canEdit={true}
                             onAddPhotos={(e) => handleAddPhotos('roomsPhotoUrls', e)}
@@ -770,7 +770,7 @@ function StartListForm({
                             onLightbox={setLightboxImage}
                         />
                     </div>
-                    <div className="p-3 rounded-lg border bg-muted/20">
+                    <div className="p-3 rounded-lg border bg-muted/10">
                         <PhotoUploadWidget
                             label={`🚪 ${t('controlCards.hallways')}`} photoUrls={form.hallwayPhotoUrls} isUploading={!!uploading.hallwayPhotoUrls} canEdit={true}
                             onAddPhotos={(e) => handleAddPhotos('hallwayPhotoUrls', e)}
@@ -843,7 +843,7 @@ function ControlCardDialog({
     };
 
     const isCurrentMonth = selectedMonth === format(new Date(), 'yyyy-MM');
-    const canEdit = !existingCard || isCurrentMonth || currentUser.isAdmin || currentUser.canEditPastControlCards;
+    const canEdit = !existingCard || isCurrentMonth || currentUser.isAdmin || !!currentUser.canEditPastControlCards;
     const canEditStatus = currentUser.isAdmin;
 
     const setRoomRating = (roomId: string, rating: CleanlinessRating) => {
@@ -1354,7 +1354,7 @@ function ControlCardDialog({
                             <span className="text-base">🏠</span> {t('controlCards.commonParts')}
                         </h3>
                         <div className="space-y-3 pl-1">
-                            <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
+                            <div className="p-3 rounded-lg border bg-muted/10 space-y-3">
                                 <RatingField
                                     label={`🍳 ${t('controlCards.kitchenCleanliness')}`}
                                     field="cleanKitchen"
@@ -1372,7 +1372,7 @@ function ControlCardDialog({
                                     onLightbox={setLightboxImage}
                                 />
                             </div>
-                            <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
+                            <div className="p-3 rounded-lg border bg-muted/10 space-y-3">
                                 <RatingField
                                     label={`🚿 ${t('controlCards.bathroomCleanliness')}`}
                                     field="cleanBathroom"
@@ -1423,7 +1423,7 @@ function ControlCardDialog({
                             </div>
                         ) : (
                             <div className="pl-1">
-                                <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
+                                <div className="p-3 rounded-lg border bg-muted/10 space-y-3">
                                     <PhotoUploadWidget
                                         label={t('controlCards.meterPhotos')}
                                         photoUrls={form.meterPhotoUrls || []}
@@ -1439,7 +1439,7 @@ function ControlCardDialog({
                     </section>
 
                     {/* ── Sprzęt ── */}
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border">
                         <div className="flex items-center gap-2">
                             <Wrench className="w-4 h-4 text-muted-foreground" />
                             <Label className="font-medium cursor-pointer text-sm">{t('controlCards.appliancesWorking')}</Label>
@@ -1471,7 +1471,7 @@ function ControlCardDialog({
                             )}
                         </div>
                         {form.comments.length === 0 ? (
-                            <div className="text-center p-4 border border-dashed rounded-lg bg-muted/20 text-muted-foreground text-xs">
+                            <div className="text-center p-4 border border-dashed rounded-lg bg-muted/10 text-muted-foreground text-xs">
                                 {t('controlCards.noCommentsCta')}
                             </div>
                         ) : (
@@ -1574,7 +1574,7 @@ function ControlCardDialog({
                     </div>
                 )}
                 {currentUser.isAdmin && existingCard && (!existingCard.changeLog || existingCard.changeLog.length === 0) && (
-                    <div className="text-center p-3 border border-dashed rounded-lg bg-muted/20 text-muted-foreground text-xs">
+                    <div className="text-center p-3 border border-dashed rounded-lg bg-muted/10 text-muted-foreground text-xs">
                         {t('controlCards.noChangeLog')}
                     </div>
                 )}
