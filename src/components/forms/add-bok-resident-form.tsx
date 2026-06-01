@@ -346,7 +346,7 @@ function AddBokResidentWizard({
                     )}
                 </ScrollArea>
 
-                <div className="p-4 border-t bg-background flex items-center justify-between gap-3 flex-shrink-0">
+                <div className="p-4 border-t bg-white flex items-center justify-between gap-3 flex-shrink-0">
                     <Button variant="ghost" onClick={step === 0 ? () => onOpenChange(false) : () => setStep((s) => s - 1)} disabled={isSubmitting} className="h-11 px-4 text-sm">
                         <ChevronLeft className="w-4 h-4 mr-1" />{step === 0 ? t('common.cancel') : t('form.back')}
                     </Button>

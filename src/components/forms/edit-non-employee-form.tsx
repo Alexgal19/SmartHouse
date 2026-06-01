@@ -156,7 +156,7 @@ const DateInput = ({
             if (e.key === 'Escape') setTextMode(false);
           }}
           placeholder="dd.mm.rrrr"
-          className="w-full min-h-[44px] rounded-md border border-primary bg-background px-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-full min-h-[44px] rounded-md border border-gray-200 bg-gray-50 px-3 pr-10 text-sm text-black focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all duration-200"
         />
       </div>
     );
@@ -169,7 +169,7 @@ const DateInput = ({
           <button
             type="button"
             onPointerDown={handlePointerDown}
-            className="flex w-full min-h-[44px] items-center rounded-md border border-input bg-background px-3 pr-10 text-sm text-left hover:bg-muted/30"
+            className="flex w-full min-h-[44px] items-center rounded-md border border-gray-200 bg-gray-50 px-3 pr-10 text-sm text-black text-left hover:bg-gray-100 transition-all duration-200"
           >
             <span className={value && isValid(value) ? '' : 'text-muted-foreground'}>
               {value && isValid(value) ? format(value, 'yyyy-MM-dd') : 'rrrr-mm-dd'}
@@ -718,7 +718,7 @@ export function EditNonEmployeeForm({
                   />
                 </div>
               </ScrollArea>
-              <div className="p-4 sm:p-6 pt-4 flex-shrink-0 flex flex-row items-center justify-between gap-3 bg-background border-t mt-auto">
+              <div className="p-4 sm:p-6 pt-4 flex-shrink-0 flex flex-row items-center justify-between gap-3 bg-white border-t mt-auto">
                 <div className="flex justify-start">
                   {nonEmployee && nonEmployee.status === 'active' && (
                     <Button

@@ -1632,15 +1632,15 @@ function AddressRow({ address, card, onClick }: { address: Address; card: Contro
         <button
             onClick={onClick}
             className={`w-full text-left group flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all duration-150
-        hover:shadow-sm hover:border-primary/30
-        ${card ? (avg >= 8 ? 'bg-green-500/5 border-green-500/25' : avg >= 4 ? 'bg-yellow-500/5 border-yellow-500/25' : 'bg-red-500/5 border-red-500/25') : 'bg-card border-border/40 hover:bg-accent/20'}`}
+        hover:shadow-sm hover:border-primary/30 text-gray-800
+        ${card ? (avg >= 8 ? 'bg-green-500/5 border-green-500/25' : avg >= 4 ? 'bg-yellow-500/5 border-yellow-500/25' : 'bg-red-500/5 border-red-500/25') : 'bg-white border-gray-200 hover:bg-gray-50'}`}
         >
             <div className={`shrink-0 rounded-full p-1 ${card ? 'bg-green-500/15' : 'bg-muted'}`}>
                 {card ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <Clock className="w-3.5 h-3.5 text-muted-foreground" />}
             </div>
 
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{address.name}</p>
+                <p className="text-sm font-medium truncate text-gray-900">{address.name}</p>
                 <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     {card && (
                         <span className="text-[10px] text-muted-foreground">{card.fillDate}</span>
