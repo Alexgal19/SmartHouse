@@ -1385,8 +1385,8 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                         return (
                             row.get('addressId') !== room.addressId ||
                             row.get('name') !== room.name ||
-                            String(row.get('capacity')) !== newCapacity ||
-                            String(row.get('isActive')).toUpperCase() !== newIsActive ||
+                            String(row.get('capacity') || '0') !== newCapacity ||
+                            (String(row.get('isActive') || 'TRUE').toUpperCase()) !== newIsActive ||
                             currentIsLocked !== newIsLocked
                         );
                     });
@@ -1462,15 +1462,15 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                     const newVisibilityMode = coord.visibilityMode || 'department';
 
                     let hasChanges = false;
-                    if (row.get('name') !== coord.name) hasChanges = true;
+                    if (String(row.get('name') || '') !== coord.name) hasChanges = true;
                     if (String(row.get('isAdmin') || 'FALSE').toUpperCase() !== newIsAdmin) hasChanges = true;
                     if (String(row.get('isDriver') || 'FALSE').toUpperCase() !== newIsDriver) hasChanges = true;
                     if (String(row.get('isRekrutacja') || 'FALSE').toUpperCase() !== newIsRekrutacja) hasChanges = true;
                     if (String(row.get('isBok') || 'FALSE').toUpperCase() !== newIsBok) hasChanges = true;
                     if (String(row.get('canEditPastControlCards') || 'FALSE').toUpperCase() !== newCanEditPastControlCards) hasChanges = true;
-                    if (row.get('departments') !== newDepartments) hasChanges = true;
-                    if (row.get('visibilityMode') !== newVisibilityMode) hasChanges = true;
-                    if (coord.password && row.get('password') !== coord.password) hasChanges = true;
+                    if (String(row.get('departments') || '') !== newDepartments) hasChanges = true;
+                    if (String(row.get('visibilityMode') || 'department') !== newVisibilityMode) hasChanges = true;
+                    if (coord.password && String(row.get('password') || '') !== coord.password) hasChanges = true;
                     
                     return hasChanges;
                 });
