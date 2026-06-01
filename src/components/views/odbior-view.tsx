@@ -671,7 +671,7 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
 
                 {/* Desktop table */}
                 <div className="hidden sm:block">
-                    <Card>
+                    <Card className="overflow-hidden">
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">

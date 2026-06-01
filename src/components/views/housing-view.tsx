@@ -1256,7 +1256,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
               >
                 {groupedByLocality.map(([locality, { addresses, availablePlaces }]) => (
                   <div key={locality}>
-                    <h2 className="text-lg font-bold sticky top-0 bg-background py-3 z-10 flex items-center">
+                    <h2 className="text-lg font-bold sticky top-0 bg-gray-100 text-gray-800 rounded-xl px-4 py-2 mb-2 z-10 flex items-center">
                       {locality}
                       {availablePlaces > 0 && (
                         <Badge variant="secondary" className="ml-2">
@@ -1363,7 +1363,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
               <Accordion type="multiple" className="w-full" defaultValue={groupedByLocality.map((g) => g[0])}>
                 {groupedByLocality.map(([locality, { addresses, availablePlaces }]) => (
                   <AccordionItem value={locality} key={locality} className="border-b-0">
-                    <AccordionTrigger className="text-lg font-bold sticky top-0 bg-background py-3 z-10 hover:no-underline">
+                    <AccordionTrigger className="text-lg font-bold sticky top-0 bg-gray-100 text-gray-800 rounded-xl px-4 py-2 mb-2 z-10 hover:no-underline">
                       <div className="flex items-center">
                         {locality}
                         {availablePlaces > 0 && (
