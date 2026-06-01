@@ -843,7 +843,7 @@ function ControlCardDialog({
     };
 
     const isCurrentMonth = selectedMonth === format(new Date(), 'yyyy-MM');
-    const canEdit = !existingCard || isCurrentMonth;
+    const canEdit = !existingCard || isCurrentMonth || currentUser.isAdmin || currentUser.canEditPastControlCards;
     const canEditStatus = currentUser.isAdmin;
 
     const setRoomRating = (roomId: string, rating: CleanlinessRating) => {

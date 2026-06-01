@@ -37,6 +37,7 @@ const coordinatorSchema = z.object({
     isAdmin: z.boolean(),
     isDriver: z.boolean().optional(),
     isRekrutacja: z.boolean().optional(),
+    canEditPastControlCards: z.boolean().optional(),
     departments: z.array(z.string()),
     visibilityMode: z.enum(['department', 'strict']).default('department'),
 });
@@ -249,6 +250,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                 if (coord?.isAdmin) perms.push('Admin');
                                 if (coord?.isDriver) perms.push('Kierowca');
                                 if (coord?.isRekrutacja) perms.push('Rekrutacja');
+                                if (coord?.canEditPastControlCards) perms.push('Minione Karty');
                                 const deptCount = (coord?.departments || []).filter(Boolean).length;
                                 return (
                                     <div className="flex items-center justify-between w-full pr-4 gap-2">
@@ -438,6 +440,21 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                             </FormControl>
                                             <FormLabel className="font-normal">
                                                 {t('settings.rekrutacjaPerms')}
+                                            </FormLabel>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name={`coordinators.${field.originalIndex}.canEditPastControlCards`}
+                                    render={({ field: editCardsField }) => (
+                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                            <FormControl>
+                                                <Switch checked={editCardsField.value || false} onCheckedChange={editCardsField.onChange} />
+                                            </FormControl>
+                                            <FormLabel className="font-normal">
+                                                Edycja minionych kart kontroli
                                             </FormLabel>
                                             <FormMessage />
                                         </FormItem>

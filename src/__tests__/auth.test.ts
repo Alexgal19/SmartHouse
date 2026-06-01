@@ -76,6 +76,7 @@ describe('Authentication', () => {
                 isDriver: false,
                 isRekrutacja: false,
                 isBok: false,
+                canEditPastControlCards: true,
             });
             expect(mockSession.save).toHaveBeenCalled();
             expect(mockSession.isLoggedIn).toBe(true);
@@ -107,6 +108,7 @@ describe('Authentication', () => {
                 isDriver: false,
                 isRekrutacja: false,
                 isBok: false,
+                canEditPastControlCards: false,
             });
             expect(mockSession.save).toHaveBeenCalled();
             expect(mockSession.isLoggedIn).toBe(true);

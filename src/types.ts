@@ -27,6 +27,7 @@ export type Coordinator = {
   isDriver?: boolean;
   isRekrutacja?: boolean;
   isBok?: boolean;
+  canEditPastControlCards?: boolean;
   departments: string[];
   password?: string;
   visibilityMode?: 'department' | 'strict';
@@ -190,6 +191,7 @@ export type SessionData = {
   isDriver: boolean;
   isRekrutacja: boolean;
   isBok: boolean;
+  canEditPastControlCards?: boolean;
 }
 
 export type CleanlinessRating = number; // 1-10 scale

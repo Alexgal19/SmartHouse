@@ -94,9 +94,10 @@ export async function login(name: string, password_input: string) {
     session.isDriver = false;
     session.isRekrutacja = false;
     session.isBok = false;
+    session.canEditPastControlCards = true;
     await clearAttempts(ip);
     await session.save();
-    return { success: true, user: { uid: 'admin-hardcoded', name: 'Admin', isAdmin: true, isDriver: false, isRekrutacja: false, isBok: false } };
+    return { success: true, user: { uid: 'admin-hardcoded', name: 'Admin', isAdmin: true, isDriver: false, isRekrutacja: false, isBok: false, canEditPastControlCards: true } };
   }
 
   const settings = await getSettings();
@@ -129,8 +130,9 @@ export async function login(name: string, password_input: string) {
     session.isDriver = user.isDriver || false;
     session.isRekrutacja = user.isRekrutacja || false;
     session.isBok = user.isBok || false;
+    session.canEditPastControlCards = user.canEditPastControlCards || false;
     await session.save();
-    return { success: true, user: { uid: user.uid, name: user.name, isAdmin: user.isAdmin, isDriver: user.isDriver || false, isRekrutacja: user.isRekrutacja || false, isBok: user.isBok || false } };
+    return { success: true, user: { uid: user.uid, name: user.name, isAdmin: user.isAdmin, isDriver: user.isDriver || false, isRekrutacja: user.isRekrutacja || false, isBok: user.isBok || false, canEditPastControlCards: user.canEditPastControlCards || false } };
   }
 
   await recordFailedAttempt(ip);

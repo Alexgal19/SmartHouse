@@ -42,6 +42,7 @@ const coordinatorSchema = z.object({
     isAdmin: z.boolean().default(false),
     isDriver: z.boolean().default(false),
     isRekrutacja: z.boolean().default(false),
+    canEditPastControlCards: z.boolean().default(false),
     departments: z.array(z.string()).default([]),
     visibilityMode: z.enum(['department', 'strict']).default('department'),
 });
@@ -69,9 +70,10 @@ export function CoordinatorForm({
             name: '',
             password: '',
             isAdmin: false,
-            isDriver: false,
-            isRekrutacja: false,
-            departments: [],
+            isDriver: coordinator?.isDriver ?? false,
+            isRekrutacja: coordinator?.isRekrutacja ?? false,
+            canEditPastControlCards: coordinator?.canEditPastControlCards ?? false,
+            departments: coordinator?.departments ?? [],
             visibilityMode: 'department',
         }
     });
@@ -90,6 +92,7 @@ export function CoordinatorForm({
                 isAdmin: false,
                 isDriver: false,
                 isRekrutacja: false,
+                canEditPastControlCards: false,
                 departments: [],
                 visibilityMode: 'department',
             });
@@ -269,6 +272,20 @@ export function CoordinatorForm({
                                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                                                 <div className="space-y-0.5">
                                                     <FormLabel>{t('settings.rekrutacjaPerms')}</FormLabel>
+                                                </div>
+                                                <FormControl>
+                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="canEditPastControlCards"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                                <div className="space-y-0.5">
+                                                    <FormLabel>Edycja minionych kart kontroli</FormLabel>
                                                 </div>
                                                 <FormControl>
                                                     <Switch checked={field.value} onCheckedChange={field.onChange} />
