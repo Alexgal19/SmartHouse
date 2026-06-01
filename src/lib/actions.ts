@@ -2408,6 +2408,11 @@ export async function editControlCardAction(
         const oldCard = cards.find(c => c.id === cardId);
         if (!oldCard) throw new Error('Control card not found');
 
+        const isCurrentMonth = oldCard.controlMonth === format(new Date(), 'yyyy-MM');
+        if (!session.isAdmin && !session.canEditPastControlCards && !isCurrentMonth) {
+            throw new Error('Brak uprawnień do edycji zarchiwizowanej karty kontroli');
+        }
+
         const diff = generateControlCardDiff(oldCard, updates);
         const newChangeLog: ControlCardChangeLogEntry[] = [...(oldCard.changeLog || [])];
         if (diff.length > 0) {
@@ -2494,7 +2499,16 @@ export async function deleteControlCardAction(
     cardId: string,
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        await requireSession();
+        const session = await requireSession();
+        const cards = await getControlCardsFromSheet();
+        const card = cards.find(c => c.id === cardId);
+        if (!card) throw new Error('Control card not found');
+
+        const isCurrentMonth = card.controlMonth === format(new Date(), 'yyyy-MM');
+        if (!session.isAdmin && !session.canEditPastControlCards && !isCurrentMonth) {
+            throw new Error('Brak uprawnień do usunięcia zarchiwizowanej karty kontroli');
+        }
+
         await updateControlCardInSheet(cardId, { deleted: true });
         revalidatePath('/dashboard');
         return { success: true };

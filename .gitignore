@@ -45,5 +45,11 @@ backups/
 /test-results/
 /playwright-report/
 
+# test secrets / temp files
+test.env
+test-*.ts
+test-*.tsx
+*.env
+
 # worktrees
 /.worktrees/
