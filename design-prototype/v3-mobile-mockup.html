@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SmartHouse — Mobile Design Mockup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        jbl: { orange: '#FF4713', dark: '#1C1C1E', surface: '#2C2C2E', card: '#3A3A3C' },
+                    },
+                    fontFamily: { sans: ['Inter','-apple-system','BlinkMacSystemFont','Segoe UI','Roboto','sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .phone { max-width: 390px; margin: 0 auto; position: relative; overflow-y: auto; background: #F2F2F7; min-height: 100vh; }
+        .hero { background: linear-gradient(180deg, #1C1C1E 0%, #2C2C2E 60%, #2C2C2E 100%); }
+        .kpi-card { background: rgba(58,58,60,0.55); border: 1px solid rgba(255,255,255,0.08); }
+        .content-card { background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+        .segment-active { background: #FF4713; color: white; border-color: #FF4713; }
+        .segment-inactive { background: #FFFFFF; color: #8E8E93; border: 1px solid #E5E5EA; }
+        .badge-green { background: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; }
+        .badge-blue { background: #E3F2FD; color: #1565C0; border: 1px solid #BBDEFB; }
+        .badge-orange { background: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2; }
+        .badge-yellow { background: #FFFDE7; color: #F57F17; border: 1px solid #FFF9C4; }
+        .badge-red { background: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2; }
+        .badge-gray { background: #F5F5F5; color: #616161; border: 1px solid #E0E0E0; }
+        .avatar-mk { background: #FFEBEE; color: #C62828; }
+        .avatar-an { background: #E3F2FD; color: #1565C0; }
+        .avatar-pz { background: #FFF8E1; color: #F57F17; }
+        .avatar-kw { background: #F5F5F5; color: #616161; }
+        .avatar-kj { background: #E8EAF6; color: #283593; }
+        .avatar-na { background: #E0F2F1; color: #00695C; }
+        .avatar-wk { background: #F3E5F5; color: #6A1B9A; }
+        .nav-item { color: #8E8E93; transition: color .2s; }
+        .nav-item.active { color: #FF4713; }
+        .nav-icon { width: 24px; height: 24px; }
+        .hero-title { color: #FFFFFF; }
+        .hero-subtitle { color: rgba(255,255,255,0.55); }
+        .kpi-label { color: rgba(255,255,255,0.5); font-size: 11px; }
+        .kpi-value { color: #FFFFFF; font-size: 22px; font-weight: 700; line-height: 1; }
+        .kpi-meta { color: rgba(255,255,255,0.4); font-size: 11px; margin-top: 2px; }
+        .orange-glow { box-shadow: 0 0 0 3px rgba(255,71,19,0.15); }
+        .btn-primary { background: #FF4713; color: white; }
+        .btn-outline { background: #FFFFFF; color: #1C1C1E; border: 1px solid #E5E5EA; }
+        .bar-chart { background: #FF4713; opacity: .35; border-radius: 3px 3px 0 0; }
+        .bar-chart.active { opacity: .9; }
+    </style>
+</head>
+<body class="bg-neutral-900">
+
+<!-- PHONE FRAME -->
+<div class="phone hide-scrollbar" id="phone">
+
+    <!-- ==================== SCREEN 1: DASHBOARD ==================== -->
+    <section id="screen-dashboard" class="min-h-screen pb-20">
+        <!-- HERO -->
+        <div class="hero pt-14 pb-5 px-5">
+            <!-- Top bar -->
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-[#FF4713] flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    </div>
+                    <span class="text-white font-bold text-base tracking-tight">SmartHouse</span>
+                </div>
+                <div class="w-7 h-7 rounded-full bg-[#3A3A3C] border border-white/10 flex items-center justify-center">
+                    <span class="text-[11px] font-semibold text-white/70">AK</span>
+                </div>
+            </div>
+
+            <div class="mb-5">
+                <div class="hero-subtitle text-xs font-medium mb-1">System zakwaterowania</div>
+                <h1 class="hero-title text-[28px] font-bold leading-tight">Dashboard</h1>
+            </div>
+
+            <!-- KPI 2x2 -->
+            <div class="grid grid-cols-2 gap-2.5">
+                <div class="kpi-card rounded-2xl p-3">
+                    <div class="kpi-label mb-1.5">Zakwaterowani</div>
+                    <div class="kpi-value">247</div>
+                    <div class="kpi-meta">+12%</div>
+                </div>
+                <div class="kpi-card rounded-2xl p-3">
+                    <div class="kpi-label mb-1.5">Nowe dziś</div>
+                    <div class="kpi-value">18</div>
+                    <div class="kpi-meta">Oczekuje</div>
+                </div>
+                <div class="kpi-card rounded-2xl p-3">
+                    <div class="kpi-label mb-1.5">Karty kont.</div>
+                    <div class="kpi-value">34</div>
+                    <div class="kpi-meta">Do zrobienia</div>
+                </div>
+                <div class="kpi-card rounded-2xl p-3">
+                    <div class="kpi-label mb-1.5">Obsadzenie</div>
+                    <div class="kpi-value">91%</div>
+                    <div class="kpi-meta">295/324</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="px-4 pt-4 space-y-3">
+            <!-- System view card -->
+            <div class="content-card rounded-[20px] p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-[15px] font-bold text-[#1C1C1E]">Widok systemu</span>
+                    <div class="flex bg-[#F2F2F7] rounded-full p-0.5 gap-0.5">
+                        <button class="segment-active px-3 py-1 rounded-full text-xs font-semibold">Przegląd</button>
+                        <button class="segment-inactive px-3 py-1 rounded-full text-xs font-medium">Osoby</button>
+                    </div>
+                </div>
+                <!-- mini chart -->
+                <div class="flex items-end gap-1.5 h-20 pt-2">
+                    <div class="flex-1 bar-chart" style="height:35%"></div>
+                    <div class="flex-1 bar-chart" style="height:55%"></div>
+                    <div class="flex-1 bar-chart" style="height:45%"></div>
+                    <div class="flex-1 bar-chart active" style="height:75%"></div>
+                    <div class="flex-1 bar-chart" style="height:60%"></div>
+                    <div class="flex-1 bar-chart" style="height:50%"></div>
+                    <div class="flex-1 bar-chart" style="height:40%"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-[#8E8E93] mt-1 px-0.5">
+                    <span>Pn</span><span>Wt</span><span>Śr</span><span>Cz</span><span>Pt</span><span>So</span><span>Nd</span>
+                </div>
+            </div>
+
+            <!-- People snippet card -->
+            <div class="content-card rounded-[20px] p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-[15px] font-bold text-[#1C1C1E]">Osoby</span>
+                    <button class="w-8 h-8 rounded-full btn-primary flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+                    </button>
+                </div>
+                <div class="space-y-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl avatar-mk flex items-center justify-center text-xs font-bold shrink-0">MK</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-semibold text-[#1C1C1E] truncate">Marek Kowalski</div>
+                            <div class="text-[11px] text-[#8E8E93]">Mickiewicza 12 · A-204</div>
+                        </div>
+                        <span class="badge-green px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0">Zakwat.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== SCREEN 2: OSOBY ==================== -->
+    <section id="screen-osoby" class="min-h-screen pb-20">
+        <div class="hero pt-14 pb-5 px-5">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-[#FF4713] flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    </div>
+                    <span class="text-white font-bold text-base tracking-tight">SmartHouse</span>
+                </div>
+                <div class="w-7 h-7 rounded-full bg-[#3A3A3C] border border-white/10 flex items-center justify-center">
+                    <span class="text-[11px] font-semibold text-white/70">AK</span>
+                </div>
+            </div>
+            <div class="mb-5">
+                <div class="hero-subtitle text-xs font-medium mb-1">Lista pracowników</div>
+                <h1 class="hero-title text-[28px] font-bold leading-tight">Osoby</h1>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+                <div class="kpi-card rounded-2xl p-3">
+                    <div class="kpi-label mb-1">Aktywni</div>
+                    <div class="kpi-value">142</div>
+                </div>
+                <div class="kpi-card rounded-2xl p-3">
+                    <div class="kpi-label mb-1">Nowi</div>
+                    <div class="kpi-value text-[#FF4713]">18</div>
+                </div>
+                <div class="kpi-card rounded-2xl p-3">
+                    <div class="kpi-label mb-1">Wymeld.</div>
+                    <div class="kpi-value">23</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-4 pt-4 space-y-3">
+            <!-- Search -->
+            <div class="relative">
+                <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8E8E93]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input type="text" placeholder="Szukaj..." class="w-full bg-white rounded-xl py-2.5 pl-10 pr-4 text-sm text-[#1C1C1E] placeholder-[#8E8E93] border-none outline-none shadow-sm">
+            </div>
+
+            <!-- Filters -->
+            <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+                <button class="segment-active px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap">Wszystkie</button>
+                <button class="segment-inactive px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap">Nowe</button>
+                <button class="segment-inactive px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap">Gotowe</button>
+            </div>
+
+            <!-- List -->
+            <div class="space-y-2.5">
+                <!-- Person 1 -->
+                <div class="content-card rounded-[20px] p-3.5 flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl avatar-mk flex items-center justify-center text-sm font-bold shrink-0">MK</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-semibold text-[#1C1C1E]">Marek Kowalski</div>
+                        <div class="text-[11px] text-[#8E8E93]">PESEL: 880512****</div>
+                    </div>
+                    <span class="badge-green px-2.5 py-1 rounded-full text-[10px] font-semibold shrink-0">Zakwat.</span>
+                </div>
+                <!-- Person 2 -->
+                <div class="content-card rounded-[20px] p-3.5 flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl avatar-an flex items-center justify-center text-sm font-bold shrink-0">AN</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-semibold text-[#1C1C1E]">Anna Nowak</div>
+                        <div class="text-[11px] text-[#8E8E93]">PESEL: 920314****</div>
+                    </div>
+                    <span class="badge-blue px-2.5 py-1 rounded-full text-[10px] font-semibold shrink-0">W drodze</span>
+                </div>
+                <!-- Person 3 -->
+                <div class="content-card rounded-[20px] p-3.5 flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl avatar-pz flex items-center justify-center text-sm font-bold shrink-0">PZ</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-semibold text-[#1C1C1E]">Piotr Zając</div>
+                        <div class="text-[11px] text-[#8E8E93]">PESEL: 750602****</div>
+                    </div>
+                    <span class="badge-red px-2.5 py-1 rounded-full text-[10px] font-semibold shrink-0">Wymeld.</span>
+                </div>
+                <!-- Person 4 -->
+                <div class="content-card rounded-[20px] p-3.5 flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl avatar-kw flex items-center justify-center text-sm font-bold shrink-0">KW</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-semibold text-[#1C1C1E]">K. Wiśniewska</div>
+                        <div class="text-[11px] text-[#8E8E93]">PESEL: 961125****</div>
+                    </div>
+                    <span class="badge-orange px-2.5 py-1 rounded-full text-[10px] font-semibold shrink-0">Oczekuje</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== SCREEN 3: ODBIORY ==================== -->
+    <section id="screen-odbiory" class="min-h-screen pb-20">
+        <div class="hero pt-14 pb-5 px-5">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-[#FF4713] flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    </div>
+                    <span class="text-white font-bold text-base tracking-tight">SmartHouse</span>
+                </div>
+                <div class="w-7 h-7 rounded-full bg-[#3A3A3C] border border-white/10 flex items-center justify-center">
+                    <span class="text-[11px] font-semibold text-white/70">AK</span>
+                </div>
+            </div>
+            <div class="mb-5">
+                <div class="hero-subtitle text-xs font-medium mb-1">Zarządzanie odbiorami</div>
+                <h1 class="hero-title text-[28px] font-bold leading-tight">Odbiory</h1>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+                <div class="kpi-card rounded-2xl p-3">
+                    <div class="kpi-label mb-1">Wszystkie</div>
+                    <div class="kpi-value">47</div>
+                </div>
+                <div class="kpi-card rounded-2xl p-3">
+                    <div class="kpi-label mb-1">W trakcie</div>
+                    <div class="kpi-value text-[#FF4713]">3</div>
+                </div>
+                <div class="kpi-card rounded-2xl p-3">
+                    <div class="kpi-label mb-1">Dziś</div>
+                    <div class="kpi-value">7</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-4 pt-4 space-y-3">
+            <!-- Add button -->
+            <div class="flex justify-end">
+                <button class="btn-primary px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+                    Nowy odbiór
+                </button>
+            </div>
+
+            <!-- Cards -->
+            <div class="space-y-2.5">
+                <!-- Odbiór 1 -->
+                <div class="content-card rounded-[20px] p-4">
+                    <div class="flex items-start justify-between mb-1">
+                        <div class="text-sm font-bold text-[#1C1C1E]">#ODR-047 · Lipowa 5a</div>
+                        <span class="badge-red px-2 py-0.5 rounded-full text-[10px] font-semibold">W trakcie</span>
+                    </div>
+                    <div class="text-[11px] text-[#8E8E93] mb-3">30.05.2026 · 2 osoby</div>
+                    <button class="btn-primary px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1">
+                        Szczegóły
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+
+                <!-- Odbiór 2 -->
+                <div class="content-card rounded-[20px] p-4">
+                    <div class="flex items-start justify-between mb-1">
+                        <div class="text-sm font-bold text-[#1C1C1E]">#ODR-046 · Kwiatowa 12</div>
+                        <span class="badge-blue px-2 py-0.5 rounded-full text-[10px] font-semibold">Nieprzyjęte</span>
+                    </div>
+                    <div class="text-[11px] text-[#8E8E93] mb-2">29.05.2026 · 1 osoba</div>
+                </div>
+
+                <!-- Odbiór 3 -->
+                <div class="content-card rounded-[20px] p-4">
+                    <div class="flex items-start justify-between mb-1">
+                        <div class="text-sm font-bold text-[#1C1C1E]">#ODR-045 · Sosnowa 3</div>
+                        <span class="badge-gray px-2 py-0.5 rounded-full text-[10px] font-semibold">Zakończony</span>
+                    </div>
+                    <div class="text-[11px] text-[#8E8E93] mb-2">28.05.2026 · 3 osoby</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== SCREEN 4: REKRUTACJA ==================== -->
+    <section id="screen-rekrutacja" class="min-h-screen pb-20">
+        <div class="hero pt-14 pb-5 px-5">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-[#FF4713] flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    </div>
+                    <span class="text-white font-bold text-base tracking-tight">SmartHouse</span>
+                </div>
+                <div class="w-7 h-7 rounded-full bg-[#3A3A3C] border border-white/10 flex items-center justify-center">
+                    <span class="text-[11px] font-semibold text-white/70">AK</span>
+                </div>
+            </div>
+            <div class="mb-5">
+                <div class="hero-subtitle text-xs font-medium mb-1">Kandydaci i zapotrzebowania</div>
+                <h1 class="hero-title text-[28px] font-bold leading-tight">Rekrutacja</h1>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <div class="kpi-card rounded-2xl p-3">
+                    <div class="kpi-label mb-1">Kandydaci</div>
+                    <div class="kpi-value text-[#FF4713]">12</div>
+                    <div class="kpi-meta">4 w drodze</div>
+                </div>
+                <div class="kpi-card rounded-2xl p-3">
+                    <div class="kpi-label mb-1">Zapotrzeb.</div>
+                    <div class="kpi-value">3</div>
+                    <div class="kpi-meta">Oczekuje</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-4 pt-4 space-y-3">
+            <!-- Notification card -->
+            <div class="content-card rounded-[20px] p-4 border border-[#FF4713]/15">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-lg">🔔</span>
+                    <span class="text-sm font-bold text-[#FF4713]">Nowe zapotrzebowanie</span>
+                </div>
+                <div class="text-[13px] text-[#1C1C1E] mb-3">Koodrynator Marek — 2 osoby na Lipową 5a</div>
+                <div class="flex gap-2">
+                    <button class="btn-primary flex-1 py-2 rounded-xl text-xs font-semibold">Akceptuj</button>
+                    <button class="btn-outline flex-1 py-2 rounded-xl text-xs font-semibold">Odrzuć</button>
+                </div>
+            </div>
+
+            <!-- Candidates section -->
+            <div class="content-card rounded-[20px] p-4">
+                <div class="text-[15px] font-bold text-[#1C1C1E] mb-3">Kandydaci</div>
+                <div class="space-y-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl avatar-kj flex items-center justify-center text-xs font-bold shrink-0">KJ</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-semibold text-[#1C1C1E]">Kowalski Jan</div>
+                            <div class="text-[11px] text-[#8E8E93]">Dodano 30.05</div>
+                        </div>
+                        <span class="badge-blue px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0">w drodze</span>
+                    </div>
+                    <div class="border-t border-gray-100"></div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl avatar-na flex items-center justify-center text-xs font-bold shrink-0">NA</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-semibold text-[#1C1C1E]">Nowak Anna</div>
+                            <div class="text-[11px] text-[#8E8E93]">Dodano 28.05</div>
+                        </div>
+                        <span class="badge-green px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0">w biurze</span>
+                    </div>
+                    <div class="border-t border-gray-100"></div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl avatar-wk flex items-center justify-center text-xs font-bold shrink-0">WK</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-semibold text-[#1C1C1E]">Wiśniewska K.</div>
+                            <div class="text-[11px] text-[#8E8E93]">Czeka na rozmowę</div>
+                        </div>
+                        <span class="badge-orange px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0">oczekuje</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== BOTTOM NAV ==================== -->
+    <div class="sticky bottom-0 z-50 bg-white/95 backdrop-blur border-t border-[#E5E5EA] h-16 flex items-center justify-around text-[10px] font-medium shrink-0">
+        <a href="#screen-dashboard" onclick="scrollToScreen('screen-dashboard')" class="nav-item flex flex-col items-center gap-0.5 flex-1 active" id="nav-dashboard">
+            <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            <span>Pulpit</span>
+        </a>
+        <a href="#screen-osoby" onclick="scrollToScreen('screen-osoby')" class="nav-item flex flex-col items-center gap-0.5 flex-1" id="nav-osoby">
+            <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            <span>Osoby</span>
+        </a>
+        <a href="#screen-dashboard" onclick="scrollToScreen('screen-dashboard')" class="nav-item flex flex-col items-center gap-0.5 flex-1" id="nav-zakwaterowanie">
+            <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            <span>Zakwat.</span>
+        </a>
+        <a href="#screen-odbiory" onclick="scrollToScreen('screen-odbiory')" class="nav-item flex flex-col items-center gap-0.5 flex-1" id="nav-odbiory">
+            <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>Odbiory</span>
+        </a>
+        <a href="#screen-rekrutacja" onclick="scrollToScreen('screen-rekrutacja')" class="nav-item flex flex-col items-center gap-0.5 flex-1" id="nav-rekrutacja">
+            <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            <span>Rekrut.</span>
+        </a>
+    </div>
+
+</div>
+
+<script>
+    function scrollToScreen(id) {
+        document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        updateNav(id);
+    }
+    function updateNav(activeId) {
+        const map = {
+            'screen-dashboard': 'nav-dashboard',
+            'screen-osoby': 'nav-osoby',
+            'screen-odbiory': 'nav-odbiory',
+            'screen-rekrutacja': 'nav-rekrutacja'
+        };
+        Object.values(map).forEach(navId => document.getElementById(navId).classList.remove('active'));
+        if (map[activeId]) document.getElementById(map[activeId]).classList.add('active');
+    }
+    // Scroll spy
+    const sections = ['screen-dashboard','screen-osoby','screen-odbiory','screen-rekrutacja'];
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) updateNav(entry.target.id);
+        });
+    }, { threshold: 0.5 });
+    sections.forEach(id => observer.observe(document.getElementById(id)));
+    // Init
+    updateNav('screen-dashboard');
+</script>
+
+</body>
+</html>

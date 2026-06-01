@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SmartHouse — JBL Style</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        jbl: {
+                            orange: '#FF4713',
+                            dark: '#1C1C1E',
+                            grey: '#8E8E93',
+                            light: '#F2F2F7',
+                            card: '#FFFFFF',
+                            segment: '#F5F5F7',
+                        },
+                        accent: {
+                            DEFAULT: '#FF4713',
+                            light: '#FF6B3D',
+                            dark: '#E03A0F',
+                            50: '#FFF0EB',
+                        }
+                    },
+                    borderRadius: {
+                        'card': '20px',
+                        'pill': '12px',
+                        'toggle': '999px',
+                    },
+                    boxShadow: {
+                        'card': '0 2px 24px rgba(0, 0, 0, 0.06), 0 0 1px rgba(0,0,0,0.04)',
+                        'card-hover': '0 8px 32px rgba(0, 0, 0, 0.1), 0 0 1px rgba(0,0,0,0.06)',
+                        'glow': '0 0 20px rgba(255, 71, 19, 0.25)',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(180deg, #E8E8ED 0%, #F5F5F7 30%, #FFFFFF 100%);
+            min-height: 100vh;
+            color: #1C1C1E;
+        }
+
+        .top-gradient {
+            background: linear-gradient(180deg, #2C2C2E 0%, #3A3A3C 40%, #48484A 100%);
+            position: relative;
+        }
+        .top-gradient::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(255,71,19,0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .ios-toggle {
+            appearance: none;
+            width: 50px;
+            height: 30px;
+            background: #E5E5EA;
+            border-radius: 999px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            flex-shrink: 0;
+        }
+        .ios-toggle::after {
+            content: '';
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        .ios-toggle:checked {
+            background: #34C759;
+        }
+        .ios-toggle:checked::after {
+            transform: translateX(20px);
+        }
+        .ios-toggle.orange:checked {
+            background: #FF4713;
+        }
+
+        .segment-control {
+            display: flex;
+            background: #F2F2F7;
+            border-radius: 10px;
+            padding: 3px;
+            gap: 3px;
+        }
+        .segment-control button {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #8E8E93;
+            transition: all 0.25s ease;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .segment-control button.active {
+            background: white;
+            color: #FF4713;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            font-weight: 600;
+        }
+
+        .card-base {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 2px 24px rgba(0, 0, 0, 0.06), 0 0 1px rgba(0,0,0,0.04);
+            transition: all 0.3s ease;
+        }
+        .card-base:hover {
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 0 1px rgba(0,0,0,0.06);
+            transform: translateY(-2px);
+        }
+
+        .orange-pill {
+            background: #FFF0EB;
+            color: #FF4713;
+            border: 1px solid rgba(255, 71, 19, 0.15);
+        }
+
+        .animate-up {
+            animation: slideUp 0.6s ease-out forwards;
+            opacity: 0;
+        }
+        .animate-up:nth-child(1) { animation-delay: 0.05s; }
+        .animate-up:nth-child(2) { animation-delay: 0.1s; }
+        .animate-up:nth-child(3) { animation-delay: 0.15s; }
+        .animate-up:nth-child(4) { animation-delay: 0.2s; }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes eqFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+
+        .eq-bar {
+            animation: eqFloat 2s ease-in-out infinite;
+        }
+        .eq-bar:nth-child(2) { animation-delay: 0.2s; }
+        .eq-bar:nth-child(3) { animation-delay: 0.4s; }
+
+        .progress-fill {
+            transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-link {
+            position: relative;
+            color: rgba(255,255,255,0.6);
+            transition: color 0.3s;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: white;
+        }
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #FF4713;
+            border-radius: 2px;
+        }
+
+        .bottom-nav {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(0,0,0,0.06);
+        }
+    </style>
+</head>
+<body class="pb-24 sm:pb-0">
+
+    <!-- TOP HERO + NAV -->
+    <div class="top-gradient text-white pb-8 sm:pb-12">
+        <nav class="max-w-5xl mx-auto px-5 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shadow-glow">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                    </svg>
+                </div>
+                <span class="text-lg font-bold tracking-tight">SmartHouse</span>
+            </div>
+            <div class="hidden md:flex items-center gap-8">
+                <a href="#dash" class="nav-link active">Dashboard</a>
+                <a href="#people" class="nav-link">Osoby</a>
+                <a href="#cards" class="nav-link">Karty</a>
+                <a href="#settings" class="nav-link">Więcej</a>
+            </div>
+            <div class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
+                <span class="text-sm font-semibold">AK</span>
+            </div>
+        </nav>
+
+        <div class="max-w-5xl mx-auto px-5 pt-4 sm:pt-8">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <p class="text-white/60 text-sm font-medium mb-1">System zakwaterowania</p>
+                    <h1 class="text-3xl sm:text-4xl font-bold">Dashboard</h1>
+                </div>
+                <div class="flex gap-2">
+                    <span class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-medium text-white/80 border border-white/10">Online <span class="inline-block w-1.5 h-1.5 rounded-full bg-green-400 ml-1"></span></span>
+                    <span class="px-3 py-1.5 rounded-full bg-accent/20 text-xs font-medium text-white border border-accent/20">247 osób</span>
+                </div>
+            </div>
+
+            <!-- KPI Mini Cards in Hero -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8">
+                <div class="bg-white/10 backdrop-blur rounded-2xl p-4 border border-white/10">
+                    <div class="text-white/50 text-xs font-medium mb-1">Zakwaterowanych</div>
+                    <div class="text-2xl font-bold">247</div>
+                    <div class="text-white/40 text-xs mt-1">+12%</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur rounded-2xl p-4 border border-white/10">
+                    <div class="text-white/50 text-xs font-medium mb-1">Nowe dzisiaj</div>
+                    <div class="text-2xl font-bold">18</div>
+                    <div class="text-white/40 text-xs mt-1">Oczekuje</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur rounded-2xl p-4 border border-white/10">
+                    <div class="text-white/50 text-xs font-medium mb-1">Karty kontrolne</div>
+                    <div class="text-2xl font-bold">34</div>
+                    <div class="text-white/40 text-xs mt-1">Do zrobienia</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur rounded-2xl p-4 border border-white/10">
+                    <div class="text-white/50 text-xs font-medium mb-1">Obsadzenie</div>
+                    <div class="text-2xl font-bold">91%</div>
+                    <div class="text-white/40 text-xs mt-1">295/324</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <main class="max-w-5xl mx-auto px-5 -mt-4 sm:-mt-6 relative z-10">
+
+        <!-- SECTION: AMBIENT / FILTER CONTROL (inspired by JBL Ambient Sound Control) -->
+        <section id="dash" class="card-base p-5 sm:p-6 mb-5 animate-up">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold">Widok systemu</h2>
+                <div class="segment-control">
+                    <button class="active">Przegląd</button>
+                    <button>Osoby</button>
+                    <button>Statystyki</button>
+                </div>
+            </div>
+
+            <!-- Mini EQ / Activity Chart -->
+            <div class="flex items-end gap-2 h-28 mt-4 px-2">
+                <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="eq-bar w-full bg-accent/20 rounded-t-lg" style="height: 45%"></div>
+                    <span class="text-[10px] text-gray-400 font-medium">Pn</span>
+                </div>
+                <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="eq-bar w-full bg-accent/30 rounded-t-lg" style="height: 62%"></div>
+                    <span class="text-[10px] text-gray-400 font-medium">Wt</span>
+                </div>
+                <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="eq-bar w-full bg-accent/25 rounded-t-lg" style="height: 55%"></div>
+                    <span class="text-[10px] text-gray-400 font-medium">Śr</span>
+                </div>
+                <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="eq-bar w-full bg-accent/40 rounded-t-lg" style="height: 78%"></div>
+                    <span class="text-[10px] text-gray-400 font-medium">Cz</span>
+                </div>
+                <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="eq-bar w-full bg-accent/50 rounded-t-lg" style="height: 85%"></div>
+                    <span class="text-[10px] text-gray-400 font-medium">Pt</span>
+                </div>
+                <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="eq-bar w-full bg-accent/35 rounded-t-lg" style="height: 70%"></div>
+                    <span class="text-[10px] text-gray-400 font-medium">So</span>
+                </div>
+                <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="eq-bar w-full bg-accent/30 rounded-t-lg" style="height: 58%"></div>
+                    <span class="text-[10px] text-gray-400 font-medium">Nd</span>
+                </div>
+            </div>
+            <div class="mt-3 text-xs text-gray-400 text-center">Zgłoszenia w tym tygodniu</div>
+        </section>
+
+        <!-- SECTION: PEOPLE LIST (Card-based like JBL EQ / Gestures) -->
+        <section id="people" class="mb-5">
+            <div class="flex items-center justify-between px-1 mb-4">
+                <h2 class="text-xl font-bold">Osoby</h2>
+                <button class="bg-accent text-white px-4 py-2 rounded-pill text-sm font-semibold flex items-center gap-1.5 shadow-glow">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Dodaj
+                </button>
+            </div>
+
+            <!-- Search + Filters -->
+            <div class="card-base p-4 mb-4 animate-up">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="relative flex-1">
+                        <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <input type="text" placeholder="Szukaj..."
+                            class="w-full bg-jbl-light rounded-pill py-2.5 pl-10 pr-4 text-sm text-jbl-dark placeholder-gray-400 border-none focus:ring-2 focus:ring-accent/30 outline-none transition-all">
+                    </div>
+                    <div class="segment-control flex-shrink-0">
+                        <button class="active">Wszystkie</button>
+                        <button>Nowe</button>
+                        <button>Gotowe</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Person Cards -->
+            <div class="space-y-3">
+                <!-- Card 1 -->
+                <div class="card-base p-4 sm:p-5 animate-up">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/15 flex items-center justify-center flex-shrink-0">
+                                <span class="text-sm font-bold text-accent">MK</span>
+                            </div>
+                            <div>
+                                <div class="text-[15px] font-semibold text-jbl-dark">Marek Kowalski</div>
+                                <div class="text-xs text-gray-500 mt-0.5">PESEL: 880512*****</div>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-600 border border-green-200">Zakwaterowany</span>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                        <div class="flex gap-4 text-xs text-gray-500">
+                            <span class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                                </svg>
+                                A-204
+                            </span>
+                            <span>12.05.2026</span>
+                        </div>
+                        <button class="text-xs font-semibold text-accent flex items-center gap-1">
+                            Szczegóły
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="card-base p-4 sm:p-5 animate-up">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 border border-blue-500/15 flex items-center justify-center flex-shrink-0">
+                                <span class="text-sm font-bold text-blue-500">AN</span>
+                            </div>
+                            <div>
+                                <div class="text-[15px] font-semibold text-jbl-dark">Anna Nowak</div>
+                                <div class="text-xs text-gray-500 mt-0.5">PESEL: 921031*****</span>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200">W drodze</span>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                        <div class="flex gap-4 text-xs text-gray-500">
+                            <span class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                                </svg>
+                                B-105
+                            </span>
+                            <span>30.05.2026</span>
+                        </div>
+                        <button class="text-xs font-semibold text-accent flex items-center gap-1">
+                            Szczegóły
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="card-base p-4 sm:p-5 animate-up">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 border border-yellow-500/15 flex items-center justify-center flex-shrink-0">
+                                <span class="text-sm font-bold text-yellow-600">JP</span>
+                            </div>
+                            <div>
+                                <div class="text-[15px] font-semibold text-jbl-dark">Jan Piotrowski</div>
+                                <div class="text-xs text-gray-500 mt-0.5">PESEL: 850728*****</div>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-50 text-yellow-700 border border-yellow-200">Oczekuje</span>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                        <div class="flex gap-4 text-xs text-gray-500">
+                            <span>Brak pokoju</span>
+                            <span>—</span>
+                        </div>
+                        <button class="text-xs font-semibold text-accent flex items-center gap-1">
+                            Szczegóły
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: CONTROL CARD DETAIL (JBL style toggles + segments) -->
+        <section id="cards" class="mb-5">
+            <div class="px-1 mb-4">
+                <h2 class="text-xl font-bold">Karta kontrolna</h2>
+                <p class="text-sm text-gray-500 mt-1">Marek Kowalski — A-204</p>
+            </div>
+
+            <!-- Main status segment (like ANC/Ambient/TalkThru) -->
+            <div class="card-base p-5 mb-4 animate-up">
+                <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Status osoby</div>
+                <div class="segment-control">
+                    <button>Oczekuje</button>
+                    <button class="active">Zakwaterowany</button>
+                    <button>W drodze</button>
+                    <button>Wyrejestrowany</button>
+                </div>
+            </div>
+
+            <!-- Toggle list (like JBL features: Auto-Play, VoiceAware...) -->
+            <div class="card-base p-2 mb-4 animate-up">
+                <div class="p-3 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-green-500/10 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold">Dokumenty sprawdzone</div>
+                            <div class="text-xs text-gray-500">Dowód osobisty, umowa</div>
+                        </div>
+                    </div>
+                    <input type="checkbox" class="ios-toggle orange" checked>
+                </div>
+                <div class="mx-3 border-t border-gray-100"></div>
+                <div class="p-3 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-green-500/10 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold">Stan pokoju OK</div>
+                            <div class="text-xs text-gray-500">Czystość, wyposażenie</div>
+                        </div>
+                    </div>
+                    <input type="checkbox" class="ios-toggle orange" checked>
+                </div>
+                <div class="mx-3 border-t border-gray-100"></div>
+                <div class="p-3 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-yellow-500/10 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold">Przeszkolenie BHP</div>
+                            <div class="text-xs text-gray-500">Wymagane podpisanie</div>
+                        </div>
+                    </div>
+                    <input type="checkbox" class="ios-toggle">
+                </div>
+                <div class="mx-3 border-t border-gray-100"></div>
+                <div class="p-3 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold">Zdjęcie profilowe</div>
+                            <div class="text-xs text-gray-500">Wymagane do legitymacji</div>
+                        </div>
+                    </div>
+                    <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white">Dodaj</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: LOGIN (JBL onboarding style) -->
+        <section id="login" class="mb-5">
+            <div class="px-1 mb-4">
+                <h2 class="text-xl font-bold">Ekran logowania</h2>
+            </div>
+            <div class="max-w-sm mx-auto">
+                <div class="card-base p-8">
+                    <div class="flex justify-center mb-8">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent to-accent-dark flex items-center justify-center shadow-glow">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="text-center mb-6">
+                        <h2 class="text-xl font-bold">SmartHouse</h2>
+                        <p class="text-sm text-gray-500 mt-1">Zaloguj się, aby kontynuować</p>
+                    </div>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 mb-1.5">Email</label>
+                            <input type="email" placeholder="twoj@email.com"
+                                class="w-full bg-jbl-light rounded-pill py-3 px-4 text-sm text-jbl-dark placeholder-gray-400 border-none focus:ring-2 focus:ring-accent/30 outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 mb-1.5">Hasło</label>
+                            <input type="password" placeholder="••••••••"
+                                class="w-full bg-jbl-light rounded-pill py-3 px-4 text-sm text-jbl-dark placeholder-gray-400 border-none focus:ring-2 focus:ring-accent/30 outline-none transition-all">
+                        </div>
+                        <button class="w-full bg-accent text-white py-3.5 rounded-pill text-sm font-bold shadow-glow mt-2">
+                            Zaloguj się
+                        </button>
+                    </div>
+                    <div class="mt-5 text-center">
+                        <a href="#" class="text-sm text-accent font-medium">Nie pamiętasz hasła?</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MOBILE BOTTOM NAV -->
+    <div class="bottom-nav fixed bottom-0 left-0 right-0 px-6 py-3 sm:hidden z-50">
+        <div class="flex justify-around items-center">
+            <a href="#dash" class="flex flex-col items-center gap-1 text-accent">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+                <span class="text-[10px] font-medium">Home</span>
+            </a>
+            <a href="#people" class="flex flex-col items-center gap-1 text-gray-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                <span class="text-[10px] font-medium">Osoby</span>
+            </a>
+            <a href="#cards" class="flex flex-col items-center gap-1 text-gray-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <span class="text-[10px] font-medium">Karty</span>
+            </a>
+            <a href="#settings" class="flex flex-col items-center gap-1 text-gray-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+                </svg>
+                <span class="text-[10px] font-medium">Więcej</span>
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>
