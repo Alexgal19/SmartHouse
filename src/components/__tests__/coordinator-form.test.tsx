@@ -1,7 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CoordinatorForm } from '../forms/coordinator-form';
-import type { Coordinator } from '@/types';
 
 // Mock dialog animations to avoid act() warnings
 jest.mock('@/components/ui/dialog', () => {
@@ -9,7 +8,7 @@ jest.mock('@/components/ui/dialog', () => {
     return {
         __esModule: true,
         ...originalModule,
-        DialogContent: ({ children, ...props }: any) => (
+        DialogContent: ({ children, ...props }: React.PropsWithChildren<React.HTMLAttributes<HTMLDivElement>>) => (
             <div data-testid="dialog-content" {...props}>{children}</div>
         ),
     };
