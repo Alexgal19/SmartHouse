@@ -27,7 +27,7 @@ export function CoordinatorFilter() {
     }, [settings, t]);
 
     return (
-        <Card className="animate-in fade-in-0 slide-in-from-bottom-4">
+        <Card className="animate-slide-up">
             <CardHeader>
                 <CardTitle>{t('dashboard.mainFilters')}</CardTitle>
                 <CardDescription>{t('dashboard.filterDesc')}</CardDescription>

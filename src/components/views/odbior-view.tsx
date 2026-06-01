@@ -625,19 +625,19 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                                     )}>
                                         {statusLabel(row.status)}
                                     </span>
-                                    <span className="text-xs text-muted-foreground">{row.date}</span>
+                                    <span className="text-xs text-gray-500">{row.date}</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                     <div>
-                                        <p className="text-xs text-muted-foreground">{t('odbior.fromHeader')}</p>
+                                        <p className="text-xs text-gray-500">{t('odbior.fromHeader')}</p>
                                         <p className="font-medium">{row.from}</p>
                                     </div>
                                     <div>
-                                        <p className="text-xs text-muted-foreground">{t('odbior.personsHeader')}</p>
+                                        <p className="text-xs text-gray-500">{t('odbior.personsHeader')}</p>
                                         <p className="font-medium">{row.persons}</p>
                                     </div>
                                     <div className="col-span-2">
-                                        <p className="text-xs text-muted-foreground">{t('odbior.recruiterHeader')}</p>
+                                        <p className="text-xs text-gray-500">{t('odbior.recruiterHeader')}</p>
                                         <p className="font-medium">{row.recruiter}</p>
                                     </div>
                                 </div>
@@ -675,14 +675,14 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
-                                    <thead className="border-b bg-muted/40">
+                                    <thead className="border-b bg-gray-50">
                                         <tr>
-                                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.statusHeader')}</th>
-                                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.dateHeader')}</th>
-                                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.fromHeader')}</th>
-                                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.personsHeader')}</th>
-                                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.recruiterHeader')}</th>
-                                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.actionsHeader')}</th>
+                                            <th className="text-left px-4 py-3 font-medium text-gray-500">{t('odbior.statusHeader')}</th>
+                                            <th className="text-left px-4 py-3 font-medium text-gray-500">{t('odbior.dateHeader')}</th>
+                                            <th className="text-left px-4 py-3 font-medium text-gray-500">{t('odbior.fromHeader')}</th>
+                                            <th className="text-left px-4 py-3 font-medium text-gray-500">{t('odbior.personsHeader')}</th>
+                                            <th className="text-left px-4 py-3 font-medium text-gray-500">{t('odbior.recruiterHeader')}</th>
+                                            <th className="text-left px-4 py-3 font-medium text-gray-500">{t('odbior.actionsHeader')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -693,7 +693,7 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                                                 </td>
                                             </tr>
                                         ) : filteredSubmissions.map((row, i) => (
-                                            <tr key={row.id} data-testid={`odbior-row-${row.id}`} className={cn('border-b last:border-0', i % 2 === 0 ? '' : 'bg-muted/30')}>
+                                            <tr key={row.id} data-testid={`odbior-row-${row.id}`} className={cn('border-b last:border-0', i % 2 === 0 ? '' : 'bg-gray-50')}>
                                                 <td className="px-4 py-3">
                                                     <span className={cn(
                                                         'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',
@@ -702,7 +702,7 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                                                         {statusLabel(row.status)}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 text-muted-foreground">{row.date}</td>
+                                                <td className="px-4 py-3 text-gray-500">{row.date}</td>
                                                 <td className="px-4 py-3">{row.from}</td>
                                                 <td className="px-4 py-3">{row.persons}</td>
                                                 <td className="px-4 py-3">{row.recruiter}</td>

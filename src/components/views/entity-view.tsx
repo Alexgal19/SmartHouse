@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, parseISO, parse, isValid } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton, SkeletonTable, SkeletonCardList } from '@/components/ui/skeleton';
 import { useMainLayout } from '@/components/layouts/main-layout';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
@@ -184,13 +184,14 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
                 </TableHeader>
                 <TableBody>
                     {entities.length > 0 ? (
-                        entities.map((entity) => {
+                        entities.map((entity, index) => {
                             const isPending = isBokTab && isBokResident(entity) && bokPendingIds?.has(entity.id);
                             return (
                                 <TableRow
                                     key={entity.id}
                                     onClick={() => onEdit(entity)}
-                                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                    className="cursor-pointer hover:bg-muted/50 transition-colors animate-slide-up"
+                                    style={{ animationDelay: `${index * 40}ms` }}
                                 >
                                     <TableCell className="font-medium">
                                         <div className="flex flex-col gap-1">
@@ -255,8 +256,8 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete, columnFilt
                 </TableHeader>
                 <TableBody>
                     {history.length > 0 ? (
-                        history.map((entry) => (
-                            <TableRow key={entry.id}>
+                        history.map((entry, index) => (
+                            <TableRow key={entry.id} className="animate-slide-up" style={{ animationDelay: `${index * 40}ms` }}>
                                 <TableCell className="font-medium">{entry.employeeLastName}</TableCell>
                                 <TableCell className="font-medium">{entry.employeeFirstName}</TableCell>
                                 <TableCell>{entry.coordinatorName || 'N/A'}</TableCell>
@@ -318,8 +319,8 @@ const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, on
                         <Card
                             key={entity.id}
                             onClick={() => onEdit(entity)}
-                            className="cursor-pointer animate-fade-in-up hover:bg-muted/50 transition-colors"
-                            style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
+                            className="cursor-pointer animate-slide-up hover:bg-muted/50 hover:shadow-md transition-all active:animate-haptic-press"
+                            style={{ animationDelay: `${index * 60}ms` }}
                         >
                             <CardHeader className="flex flex-row items-start justify-between pb-4">
                                 <div>
@@ -365,8 +366,8 @@ const HistoryCardList = ({ history, onDelete }: { history: AddressHistory[]; onD
                 history.map((entry, index) => (
                     <Card
                         key={entry.id}
-                        className="animate-fade-in-up"
-                        style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
+                        className="animate-slide-up"
+                        style={{ animationDelay: `${index * 60}ms` }}
                     >
                         <CardHeader className="flex flex-row items-start justify-between pb-4">
                             <div>
@@ -892,10 +893,11 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     <Skeleton className="h-8 w-1/3" />
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-4">
-                        <Skeleton className="h-24 w-full" />
-                        <Skeleton className="h-24 w-full" />
-                        <Skeleton className="h-24 w-full" />
+                    <div className="hidden sm:block">
+                        <SkeletonTable rowCount={5} colCount={6} />
+                    </div>
+                    <div className="block sm:hidden">
+                        <SkeletonCardList count={3} />
                     </div>
                 </CardContent>
             </Card>
@@ -949,7 +951,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
     const renderContent = (data: Entity[], isBokTab: boolean = false, isDismissed: boolean = false, customTotalPages?: number) => (
         <>
-            <ScrollArea className="h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
+            <ScrollArea className="h-[55vh] overflow-x-auto">
                 {isMounted ?
                     (viewMode === 'list' ?
                         <EntityTable
@@ -987,7 +989,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
     const renderHistoryContent = () => (
         <>
-            <ScrollArea className="h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
+            <ScrollArea className="h-[55vh] overflow-x-auto">
                 {isMounted ? (
                     isMobile ? (
                         <HistoryCardList
@@ -1022,24 +1024,24 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const desktopTabsList = (
         <TabsList className="hidden sm:flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0">
             {showBokTab && (
-                <TabsTrigger value="bok-residents" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
+                <TabsTrigger value="bok-residents" disabled={isPending} className="flex-1 min-w-[120px] bg-gray-100 text-gray-500 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-gray-200 hover:text-gray-900">
                     <Briefcase className="mr-2 h-4 w-4 shrink-0" />
                     <span className="truncate">{t('tab.bok')} ({(filteredAndSortedData.activeBokResidents || []).length})</span>
                 </TabsTrigger>
             )}
-            <TabsTrigger value="active" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
+            <TabsTrigger value="active" disabled={isPending} className="flex-1 min-w-[120px] bg-gray-100 text-gray-500 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-gray-200 hover:text-gray-900">
                 <Users className="mr-2 h-4 w-4 shrink-0" />
                 <span className="truncate">{t('tab.active')} ({dataMap.active.length})</span>
             </TabsTrigger>
-            <TabsTrigger value="dismissed" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
+            <TabsTrigger value="dismissed" disabled={isPending} className="flex-1 min-w-[120px] bg-gray-100 text-gray-500 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-gray-200 hover:text-gray-900">
                 <UserX className="mr-2 h-4 w-4 shrink-0" />
                 <span className="truncate">{t('tab.dismissed')} ({dataMap.dismissed.length})</span>
             </TabsTrigger>
-            <TabsTrigger value="non-employees" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
+            <TabsTrigger value="non-employees" disabled={isPending} className="flex-1 min-w-[120px] bg-gray-100 text-gray-500 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-gray-200 hover:text-gray-900">
                 <UserX className="mr-2 h-4 w-4 shrink-0" />
                 <span className="truncate">{t('tab.nonEmployees')} ({dataMap['non-employees'].length})</span>
             </TabsTrigger>
-            <TabsTrigger value="history" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
+            <TabsTrigger value="history" disabled={isPending} className="flex-1 min-w-[120px] bg-gray-100 text-gray-500 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-gray-200 hover:text-gray-900">
                 <History className="mr-2 h-4 w-4 shrink-0" />
                 <span className="truncate">{t('tab.history')} ({dataMap.history.length})</span>
             </TabsTrigger>

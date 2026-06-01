@@ -17,7 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { generateAccommodationReport, transferEmployees, generateNzCostsReport, generateDeductionsReport } from '@/lib/actions';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton, SkeletonAccordion, SkeletonTable } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -229,7 +229,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
 
             <Accordion type="multiple" className="w-full space-y-2">
                 {filteredFields.map((field) => (
-                    <AccordionItem value={field.id} key={field.id} className="border rounded-md px-4 animate-fade-in-up" style={{ animationDelay: `${field.originalIndex * 50}ms`, animationFillMode: 'backwards' }}>
+                    <AccordionItem value={field.id} key={field.id} className="border rounded-md px-4 animate-slide-up" style={{ animationDelay: `${field.originalIndex * 50}ms` }}>
                         <AccordionTrigger>
                             {(() => {
                                 const coord = watchedCoordinators?.[field.originalIndex];
@@ -549,7 +549,7 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
 
                         const isExpanded = expandedAddressId === address.id;
                         return (
-                            <div key={address.id} className="rounded-lg border p-3 animate-fade-in-up" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}>
+                            <div key={address.id} className="rounded-lg border p-3 animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
                                 <div className="flex items-center justify-between">
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
@@ -1695,11 +1695,11 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
             <div className="space-y-6">
                 <Card>
                     <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
-                    <CardContent><div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div></CardContent>
+                    <CardContent><SkeletonAccordion count={4} /></CardContent>
                 </Card>
                 <Card>
                     <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
-                    <CardContent><Skeleton className="h-32 w-full" /></CardContent>
+                    <CardContent><SkeletonTable rowCount={3} colCount={4} /></CardContent>
                 </Card>
             </div>
         );

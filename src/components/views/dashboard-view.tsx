@@ -64,10 +64,10 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full animate-shimmer animation-delay-stagger-1" />
+              <Skeleton className="h-24 w-full animate-shimmer animation-delay-stagger-2" />
+              <Skeleton className="h-24 w-full animate-shimmer animation-delay-stagger-3" />
+              <Skeleton className="h-24 w-full animate-shimmer animation-delay-stagger-4" />
             </div>
           </CardContent>
         </Card>
@@ -103,28 +103,36 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
 
   return (
     <>
-      <div className="space-y-6">
-        {currentUser.isAdmin && <CoordinatorFilter />}
+      <div className="flex flex-col min-h-full animate-glass-slide z-10 relative">
+        <div className="space-y-6 mb-6">
+          {currentUser.isAdmin && <CoordinatorFilter />}
 
-        {currentUser.isAdmin && selectedCoordinatorId !== 'all' && (
-          <DynamicCoordinatorOccupancyChart />
-        )}
+          {currentUser.isAdmin && selectedCoordinatorId !== 'all' && (
+            <DynamicCoordinatorOccupancyChart />
+          )}
 
-        <DashboardKPIs
-          employees={allEmployees}
-          nonEmployees={allNonEmployees}
-          onUpcomingCheckoutsClick={handleUpcomingCheckoutsClick}
-          hasNewCheckouts={currentUser.isAdmin && hasNewCheckouts}
-        />
-        <QuickActions onOpenAddressPreview={() => setIsAddressPreviewOpen(true)} />
-        <CoordinatorAlertsPanel />
-        {currentUser.isAdmin && <ControlCardCommentsPanel currentUser={currentUser} settings={settings} />}
-        {currentUser.isAdmin && <SystemStatusPanel />}
-        <DynamicDashboardCharts
-          employees={allEmployees}
-          nonEmployees={allNonEmployees}
-          settings={settings}
-        />
+          <DashboardKPIs
+            employees={allEmployees}
+            nonEmployees={allNonEmployees}
+            onUpcomingCheckoutsClick={handleUpcomingCheckoutsClick}
+            hasNewCheckouts={currentUser.isAdmin && hasNewCheckouts}
+          />
+        </div>
+
+        {/* Bottom White Container */}
+        <div className="bg-white rounded-t-[24px] md:rounded-t-[32px] flex-1 text-black shadow-[0_-20px_40px_rgba(0,0,0,0.1)] p-4 sm:p-8 -mx-2 sm:-mx-6 flex flex-col gap-6">
+          <div className="max-w-[1600px] w-full mx-auto space-y-6">
+            <QuickActions onOpenAddressPreview={() => setIsAddressPreviewOpen(true)} />
+            <CoordinatorAlertsPanel />
+            {currentUser.isAdmin && <ControlCardCommentsPanel currentUser={currentUser} settings={settings} />}
+            {currentUser.isAdmin && <SystemStatusPanel />}
+            <DynamicDashboardCharts
+              employees={allEmployees}
+              nonEmployees={allNonEmployees}
+              settings={settings}
+            />
+          </div>
+        </div>
       </div>
 
       <UpcomingCheckoutsDialog

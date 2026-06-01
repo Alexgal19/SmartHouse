@@ -11,6 +11,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing demandId' }, { status: 400 });
         }
         const session = await getSession();
+        if (!session?.isLoggedIn) {
+            return NextResponse.json({ error: 'Nieautoryzowany dostęp.' }, { status: 401 });
+        }
 
         // Rate limiting
         const identifier = session?.uid ? `u:${session.uid}` : `ip:unknown`;

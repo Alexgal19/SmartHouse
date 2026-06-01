@@ -34,7 +34,7 @@ function NavItem({ item, onClick, activeView, unacceptedCount, wdrodzeCount, pen
         >
             <div className={cn(
                 "relative flex items-center justify-center p-2 rounded-lg transition-all duration-200",
-                activeView === item.view && "bg-primary/10"
+                activeView === item.view && "bg-primary/10 animate-eq-float"
             )}>
                 {((item.view === 'odbior' && unacceptedCount > 0) || (item.view === 'recruitment' && (wdrodzeCount ?? 0) > 0) || (item.view === 'zapotrzebowania' && pendingDemandsCount > 0)) && (
                     <div className="absolute inset-0 rounded-lg animate-blink-red pointer-events-none" />

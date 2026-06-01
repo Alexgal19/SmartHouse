@@ -4,25 +4,25 @@
 
 @layer base {
   :root {
-    --background: 220 20% 98%; /* Lighter Gray for a cleaner look */
-    --foreground: 220 10% 3.9%;
+    --background: 0 0% 19%; /* #303030 */
+    --foreground: 0 0% 100%;
     --card: 0 0% 100%;
     --card-foreground: 220 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 220 10% 3.9%;
-    --primary: 24 95% 53%; /* Lighter Orange */
+    --primary: 14 100% 57%; /* #FF5722 */
     --primary-foreground: 210 20% 98%;
-    --secondary: 220 14.3% 95.9%;
-    --secondary-foreground: 220 10% 3.9%;
-    --muted: 220 14.3% 95.9%;
-    --muted-foreground: 220 8.9% 46.1%;
-    --accent: 24 95% 53%; /* Lighter Orange */
+    --secondary: 0 0% 25%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 25%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 14 100% 57%;
     --accent-foreground: 210 20% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 20% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 24 95% 53%; /* Lighter Orange */
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 14 100% 57%;
     --success: 142.1 76.2% 36.3%;
     --success-foreground: 355.7 100% 97.3%;
     --warning: 38 92% 50%;
@@ -30,19 +30,19 @@
     --info: 211 100% 50%;
     --info-foreground: 210 20% 98%;
     --radius: 0.8rem;
-    --chart-1: 24 95% 53%;
+    --chart-1: 14 100% 57%;
     --chart-2: 124 54% 65%;
     --chart-3: 206 85% 68%;
     --chart-4: 280 85% 60%;
     --chart-5: 0 84.2% 60.2%;
-     --sidebar-background: 220 10% 10%;
+    --sidebar-background: 0 0% 15%; /* Darker than #303030 */
     --sidebar-foreground: 210 20% 98%;
-    --sidebar-primary: 24 95% 53%;
+    --sidebar-primary: 14 100% 57%;
     --sidebar-primary-foreground: 210 20% 98%;
-    --sidebar-accent: 220 10% 15%;
+    --sidebar-accent: 0 0% 20%;
     --sidebar-accent-foreground: 210 20% 98%;
-    --sidebar-border: 220 10% 15%;
-    --sidebar-ring: 24 95% 53%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 14 100% 57%;
   }
 
   .dark {
@@ -92,7 +92,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground bg-background;
     font-family: 'Inter', sans-serif;
   }
 }
@@ -137,9 +137,231 @@
   animation: blink-light-red 2.5s infinite ease-in-out !important;
 }
 
+/* ===== Heavy & Playful + Hardware-feel Animations ===== */
+
+/* 1. Bounce In — cards, dialogs, major elements */
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) translateY(20px);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05) translateY(-4px);
+  }
+  70% {
+    transform: scale(0.98) translateY(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* 2. Slide Up — list items, rows, cards entering sequentially */
+@keyframes slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out both;
+}
+
+/* 3. Spring Toggle — buttons, toggles on click */
+@keyframes spring-toggle {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.96); }
+  60% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+.animate-spring-toggle {
+  animation: spring-toggle 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* 4. Haptic Press — mobile tap / desktop click feedback */
+@keyframes haptic-press {
+  0% { transform: scale(1); }
+  40% { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+.animate-haptic-press {
+  animation: haptic-press 0.15s ease-out both;
+}
+
+/* 5. Shake — form errors, validation failures */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px); }
+  30% { transform: translateX(6px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+  90% { transform: translateX(2px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out both;
+}
+
+/* 6. Shimmer — skeleton loading wave */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--muted) / 0.6) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+/* 7. EQ Micro-bounce — active nav items, badges */
+@keyframes eq-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.animate-eq-float {
+  animation: eq-float 1.2s ease-in-out infinite;
+}
+
+/* 8. Pulse Glow — badges with new notifications */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px hsl(var(--primary) / 0);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* 9. Glass Slide — page content transitions */
+@keyframes glass-slide {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-glass-slide {
+  animation: glass-slide 0.35s ease-out both;
+}
+
+/* 10. Focus Glow — input focus ring expansion */
+@keyframes focus-glow {
+  0% { box-shadow: 0 0 0 0 hsl(var(--ring) / 0.3); }
+  100% { box-shadow: 0 0 0 4px hsl(var(--ring) / 0.15); }
+}
+
+.animate-focus-glow {
+  animation: focus-glow 0.3s ease-out both;
+}
+
+/* 11. Ripple — button press spread (CSS-only via pseudo-element trick) */
+@keyframes ripple-spread {
+  0% { transform: scale(0); opacity: 0.35; }
+  100% { transform: scale(4); opacity: 0; }
+}
+
+/* 12. Success Burst — toast / success state glow */
+@keyframes success-burst {
+  0% {
+    box-shadow: 0 0 0 0 hsl(var(--success) / 0.6);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 20px 4px hsl(var(--success) / 0.3);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 hsl(var(--success) / 0);
+    transform: scale(1);
+  }
+}
+
+.animate-success-burst {
+  animation: success-burst 0.6s ease-out both;
+}
+
+/* 13. Progress Fill — bars, occupancy meters */
+@keyframes progress-fill {
+  0% { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+
+.animate-progress-fill {
+  animation: progress-fill 0.8s ease-out forwards;
+  transform-origin: left;
+}
+
+/* 14. Hover Lift — cards on hover */
+@keyframes hover-lift {
+  0% { transform: translateY(0); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  100% { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.12); }
+}
+
+/* Utility: interactive elements get haptic + spring */
+.interactive-spring {
+  transition: transform 0.15s ease-out, box-shadow 0.2s ease-out;
+}
+.interactive-spring:active {
+  animation: spring-toggle 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Stagger delay utilities */
+.stagger-1 { animation-delay: 40ms; }
+.stagger-2 { animation-delay: 80ms; }
+.stagger-3 { animation-delay: 120ms; }
+.stagger-4 { animation-delay: 160ms; }
+.stagger-5 { animation-delay: 200ms; }
+.stagger-6 { animation-delay: 240ms; }
+.stagger-7 { animation-delay: 280ms; }
+.stagger-8 { animation-delay: 320ms; }
+
+/* Respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
   .animate-blink-red,
-  .animate-blink-light-red {
+  .animate-blink-light-red,
+  .animate-bounce-in,
+  .animate-slide-up,
+  .animate-spring-toggle,
+  .animate-haptic-press,
+  .animate-shake,
+  .animate-shimmer,
+  .animate-eq-float,
+  .animate-pulse-glow,
+  .animate-glass-slide,
+  .animate-focus-glow,
+  .animate-success-burst,
+  .animate-progress-fill,
+  .interactive-spring:active {
     animation: none !important;
+    transition: none !important;
   }
 }

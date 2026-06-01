@@ -119,7 +119,7 @@ function PINLock({ onUnlock }: { onUnlock: () => void }) {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center animate-in fade-in zoom-in duration-300">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center animate-bounce-in">
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6">
                 <Lock className="w-8 h-8 text-primary" />
             </div>
@@ -1528,7 +1528,7 @@ function ControlCardDialog({
                                                                 ? status === 'Nie przyjęte' ? 'bg-red-500/10 text-red-600 border-red-500/30 animate-pulse'
                                                                 : status === 'W trakcie' ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30 animate-pulse'
                                                                 : 'bg-green-500/10 text-green-600 border-green-500/30 animate-pulse'
-                                                                : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                                                                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                                                         } ${!canEditStatus && 'opacity-70 cursor-not-allowed'}`}
                                                     >
                                                         {status === 'Nie przyjęte' ? '🔴' : status === 'W trakcie' ? '🟡' : '🟢'} {statusLabelMap[status]}
@@ -1998,7 +1998,23 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
     }
 
     if (!rawSettings) {
-        return <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}</div>;
+        return (
+            <div className="space-y-5">
+                <Skeleton className="h-10 w-1/3 animate-shimmer" />
+                <Skeleton className="h-8 w-48 animate-shimmer" />
+                <div className="space-y-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="border rounded-lg p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <Skeleton className="h-5 w-1/3 animate-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
+                                <Skeleton className="h-4 w-20 animate-shimmer" style={{ animationDelay: `${i * 60 + 20}ms` }} />
+                            </div>
+                            <Skeleton className="h-4 w-2/3 animate-shimmer" style={{ animationDelay: `${i * 60 + 40}ms` }} />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
     }
 
     return (

@@ -711,7 +711,7 @@ const MobileAddressCard = ({
     <Card
       id={`housing-address-${address.id}`}
       className={cn(
-        'overflow-hidden animate-fade-in-up',
+        'overflow-hidden animate-slide-up',
         !address.isActive && 'border-destructive/50 bg-destructive/5',
         address.isActive && address.available > 0 && 'border-green-500/30',
         isHighlighted && 'ring-2 ring-primary border-primary',
@@ -1171,14 +1171,36 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
 
   if (!rawHousingData || !settings) {
     return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-8 w-1/3" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-64 w-full" />
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-8 w-1/3" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Skeleton className="h-24 w-full animate-shimmer animation-delay-stagger-1" />
+              <Skeleton className="h-24 w-full animate-shimmer animation-delay-stagger-2" />
+              <Skeleton className="h-24 w-full animate-shimmer animation-delay-stagger-3" />
+              <Skeleton className="h-24 w-full animate-shimmer animation-delay-stagger-4" />
+            </div>
+            <Skeleton className="h-48 w-full animate-shimmer" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><Skeleton className="h-8 w-1/4" /></CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex gap-3">
+                  <Skeleton className="h-12 flex-1 animate-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
+                  <Skeleton className="h-12 flex-1 animate-shimmer" style={{ animationDelay: `${i * 60 + 30}ms` }} />
+                  <Skeleton className="h-12 flex-1 animate-shimmer" style={{ animationDelay: `${i * 60 + 60}ms` }} />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -1295,7 +1317,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                     key={address.id}
                     id={`housing-address-${address.id}`}
                     className={cn(
-                      'cursor-pointer transition-colors animate-fade-in-up',
+                      'cursor-pointer transition-colors animate-slide-up',
                       !address.isActive && 'border-destructive/50 bg-destructive/10',
                       address.isActive && selectedAddressIds.includes(address.id)
                         ? 'bg-primary/10 border-primary'
@@ -1357,7 +1379,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                           key={address.id}
                           id={`housing-address-${address.id}`}
                           className={cn(
-                            'cursor-pointer transition-colors animate-fade-in-up',
+                            'cursor-pointer transition-colors animate-slide-up',
                             !address.isActive && 'border-destructive/50 bg-destructive/10',
                             address.isActive && selectedAddressIds.includes(address.id)
                               ? 'bg-primary/10 border-primary'

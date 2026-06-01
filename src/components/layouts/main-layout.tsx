@@ -53,29 +53,15 @@ import { differenceInDays, parseISO, format } from 'date-fns';
 const HouseLoader = () => {
     const { t } = useLanguage();
     return (
-        <div className="relative w-48 h-48 flex flex-col items-center justify-center">
-            <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full">
-                <defs>
-                    <linearGradient id="liquidGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="hsl(var(--primary) / 0.8)" />
-                        <stop offset="50%" stopColor="hsl(var(--primary) / 0.4)" />
-                        <stop offset="100%" stopColor="hsl(var(--primary) / 0.8)" />
-                    </linearGradient>
-                    <mask id="houseMask">
-                        <path d="M10 50 L50 10 L90 50 L90 90 L65 90 L65 65 L35 65 L35 90 L10 90 Z" fill="white" />
-                    </mask>
-                </defs>
-                <rect
-                    x="-50"
-                    y="-50"
-                    width="200"
-                    height="200"
-                    fill="url(#liquidGradient)"
-                    mask="url(#houseMask)"
-                    className="animate-liquid-gradient"
-                />
-            </svg>
-            <p className="absolute bottom-10 text-sm text-muted-foreground animate-pulse-text">
+        <div className="flex flex-col items-center justify-center gap-8 min-h-screen bg-[#303030] w-full text-white">
+            <div className="relative w-32 h-32 flex items-center justify-center animate-bounce-in">
+                {/* Background glow for loader */}
+                <div className="absolute inset-0 bg-[#FF5722]/30 blur-[40px] rounded-full animate-pulse-glow"></div>
+                <div className="relative z-10 animate-eq-float">
+                    <ModernHouseIcon className="w-24 h-24" />
+                </div>
+            </div>
+            <p className="text-sm font-medium text-gray-400 animate-pulse">
                 {t('loading.data')}
             </p>
         </div>
@@ -1285,14 +1271,15 @@ export default function MainLayout({
     return (
         <SidebarProvider>
             <MainLayoutContext.Provider value={contextValue}>
-                <div className="flex h-screen w-full bg-muted/50">
+                <div className="flex h-screen w-full bg-background relative overflow-hidden text-foreground">
+                    {/* Background Glow */}
+                    <div className="absolute top-0 left-[60%] -translate-x-1/2 w-full max-w-4xl h-[400px] bg-[#FF5722]/15 blur-[120px] rounded-full pointer-events-none z-0"></div>
 
                     {/* Desktop icon-only sidebar */}
                     <aside className="hidden sm:flex flex-col items-center w-16 h-screen bg-sidebar border-r border-sidebar-border py-4 gap-1 z-30 shrink-0">
                         {/* Logo icon */}
-                        <div className="flex flex-col items-center justify-center mb-4 gap-0.5">
-                            <ModernHouseIcon className="h-7 w-7 text-primary" />
-                            <span className="text-[10px] font-bold tracking-widest text-primary leading-none">SW</span>
+                        <div className="flex flex-col items-center justify-center mb-8">
+                            <ModernHouseIcon className="h-10 w-10" />
                         </div>
 
                         {/* Nav items */}
@@ -1308,7 +1295,7 @@ export default function MainLayout({
                                             ? 'opacity-40 pointer-events-none'
                                             : '',
                                         activeView === item.view
-                                            ? 'bg-primary text-primary-foreground shadow-md hover:bg-primary'
+                                            ? 'bg-primary text-primary-foreground shadow-md hover:bg-primary animate-eq-float'
                                             : 'text-muted-foreground'
                                     )}
                                 >

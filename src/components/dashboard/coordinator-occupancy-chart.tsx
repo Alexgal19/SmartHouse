@@ -114,7 +114,7 @@ export function CoordinatorOccupancyChart() {
     }
 
     return (
-        <Card className="animate-in fade-in-0 slide-in-from-bottom-4">
+        <Card className="animate-slide-up">
             <CardHeader>
                 <CardTitle>Obłożenie dla koordynatora</CardTitle>
                 <CardDescription>Procentowe obłożenie adresów przypisanych do: <span className="font-bold text-primary">{chartData.coordinatorName}</span></CardDescription>

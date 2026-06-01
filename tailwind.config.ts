@@ -1,4 +1,3 @@
-
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -93,24 +92,12 @@ export default {
       },
       keyframes: {
         'accordion-down': {
-          from: {
-            height: '0',
-            opacity: '0'
-          },
-          to: {
-            height: 'var(--radix-accordion-content-height)',
-            opacity: '1'
-          },
+          from: { height: '0', opacity: '0' },
+          to: { height: 'var(--radix-accordion-content-height)', opacity: '1' },
         },
         'accordion-up': {
-          from: {
-            height: 'var(--radix-accordion-content-height)',
-            opacity: '1'
-          },
-          to: {
-            height: '0',
-            opacity: '0'
-          },
+          from: { height: 'var(--radix-accordion-content-height)', opacity: '1' },
+          to: { height: '0', opacity: '0' },
         },
         'fade-in': {
           from: { opacity: '0' },
@@ -121,38 +108,28 @@ export default {
           to: { opacity: '0' },
         },
         'fade-in-up': {
-            '0%': {
-                opacity: '0',
-                transform: 'translateY(10px)'
-            },
-            '100%': {
-                opacity: '1',
-                transform: 'translateY(0)'
-            },
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         'scale-in': {
           '0%': { opacity: '0', transform: 'scale(0.95)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
         },
-         'pulse-text': {
+        'pulse-text': {
           '0%, 100%': { opacity: '0.4' },
           '50%': { opacity: '1' },
         },
         'pulse-green': {
-            '0%, 100%': {
-                'box-shadow': '0 0 0 0 rgba(74, 222, 128, 0.7)',
-            },
-            '70%': {
-                'box-shadow': '0 0 0 10px rgba(74, 222, 128, 0)',
-            },
+          '0%, 100%': { 'box-shadow': '0 0 0 0 rgba(74, 222, 128, 0.7)' },
+          '70%': { 'box-shadow': '0 0 0 10px rgba(74, 222, 128, 0)' },
         },
-         "slide-in-from-bottom": {
-          "0%": { transform: "translateY(100%)" },
-          "100%": { transform: "translateY(0)" },
+        'slide-in-from-bottom': {
+          '0%': { transform: 'translateY(100%)' },
+          '100%': { transform: 'translateY(0)' },
         },
-        "slide-out-to-bottom": {
-          "0%": { transform: "translateY(0)" },
-          "100%": { transform: "translateY(100%)" },
+        'slide-out-to-bottom': {
+          '0%': { transform: 'translateY(0)' },
+          '100%': { transform: 'translateY(100%)' },
         },
         'liquid-gradient': {
           '0%': { transform: 'translateX(-50%)' },
@@ -160,18 +137,78 @@ export default {
           '100%': { transform: 'translateX(-50%)' },
         },
         blob: {
-          "0%": {
-            transform: "translate(0px, 0px) scale(1)",
-          },
-          "33%": {
-            transform: "translate(30px, -50px) scale(1.1)",
-          },
-          "66%": {
-            transform: "translate(-20px, 20px) scale(0.9)",
-          },
-          "100%": {
-            transform: "translate(0px, 0px) scale(1)",
-          },
+          '0%': { transform: 'translate(0px, 0px) scale(1)' },
+          '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+          '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+          '100%': { transform: 'translate(0px, 0px) scale(1)' },
+        },
+        /* Heavy & Playful + Hardware-feel */
+        'bounce-in': {
+          '0%': { opacity: '0', transform: 'scale(0.3) translateY(20px)' },
+          '50%': { opacity: '1', transform: 'scale(1.05) translateY(-4px)' },
+          '70%': { transform: 'scale(0.98) translateY(2px)' },
+          '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+        },
+        'slide-up': {
+          '0%': { opacity: '0', transform: 'translateY(16px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'spring-toggle': {
+          '0%': { transform: 'scale(1)' },
+          '30%': { transform: 'scale(0.96)' },
+          '60%': { transform: 'scale(1.03)' },
+          '100%': { transform: 'scale(1)' },
+        },
+        'haptic-press': {
+          '0%': { transform: 'scale(1)' },
+          '40%': { transform: 'scale(0.97)' },
+          '100%': { transform: 'scale(1)' },
+        },
+        'shake': {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '15%': { transform: 'translateX(-6px)' },
+          '30%': { transform: 'translateX(6px)' },
+          '45%': { transform: 'translateX(-4px)' },
+          '60%': { transform: 'translateX(4px)' },
+          '75%': { transform: 'translateX(-2px)' },
+          '90%': { transform: 'translateX(2px)' },
+        },
+        'shimmer': {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+        'eq-float': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-3px)' },
+        },
+        'pulse-glow': {
+          '0%, 100%': { boxShadow: '0 0 0 0 hsl(var(--primary) / 0.4)' },
+          '50%': { boxShadow: '0 0 0 8px hsl(var(--primary) / 0)' },
+        },
+        'glass-slide': {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'focus-glow': {
+          '0%': { boxShadow: '0 0 0 0 hsl(var(--ring) / 0.3)' },
+          '100%': { boxShadow: '0 0 0 4px hsl(var(--ring) / 0.15)' },
+        },
+        'success-burst': {
+          '0%': { boxShadow: '0 0 0 0 hsl(var(--success) / 0.6)', transform: 'scale(1)' },
+          '50%': { boxShadow: '0 0 20px 4px hsl(var(--success) / 0.3)', transform: 'scale(1.02)' },
+          '100%': { boxShadow: '0 0 0 0 hsl(var(--success) / 0)', transform: 'scale(1)' },
+        },
+        'progress-fill': {
+          '0%': { transform: 'scaleX(0)' },
+          '100%': { transform: 'scaleX(1)' },
+        },
+        'floating': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-15px)' },
+        },
+        'liquid-fill': {
+          '0%': { transform: 'translateY(100%)' },
+          '100%': { transform: 'translateY(0)' },
         },
       },
       animation: {
@@ -183,33 +220,59 @@ export default {
         'scale-in': 'scale-in 0.3s ease-out',
         'pulse-text': 'pulse-text 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'pulse-green': 'pulse-green 2s infinite',
-        "slide-in-from-bottom": "slide-in-from-bottom 0.3s ease-out",
-        "slide-out-to-bottom": "slide-out-to-bottom 0.3s ease-out",
+        'slide-in-from-bottom': 'slide-in-from-bottom 0.3s ease-out',
+        'slide-out-to-bottom': 'slide-out-to-bottom 0.3s ease-out',
         'liquid-gradient': 'liquid-gradient 6s ease-in-out infinite',
-        blob: "blob 7s infinite",
+        blob: 'blob 7s infinite',
+        /* Heavy & Playful + Hardware-feel */
+        'bounce-in': 'bounce-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+        'slide-up': 'slide-up 0.4s ease-out both',
+        'spring-toggle': 'spring-toggle 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+        'haptic-press': 'haptic-press 0.15s ease-out both',
+        'shake': 'shake 0.4s ease-in-out both',
+        'shimmer': 'shimmer 1.5s infinite linear',
+        'eq-float': 'eq-float 1.2s ease-in-out infinite',
+        'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
+        'glass-slide': 'glass-slide 0.35s ease-out both',
+        'focus-glow': 'focus-glow 0.3s ease-out both',
+        'success-burst': 'success-burst 0.6s ease-out both',
+        'progress-fill': 'progress-fill 0.8s ease-out forwards',
+        'floating': 'floating 3s ease-in-out infinite',
+        'liquid-fill': 'liquid-fill 2s ease-in-out infinite alternate',
       },
       animationDelay: {
         '1500': '1500ms',
         '2000': '2000ms',
         '4000': '4000ms',
-      }
+        'stagger-1': '40ms',
+        'stagger-2': '80ms',
+        'stagger-3': '120ms',
+        'stagger-4': '160ms',
+        'stagger-5': '200ms',
+        'stagger-6': '240ms',
+        'stagger-7': '280ms',
+        'stagger-8': '320ms',
+      },
     },
   },
-  plugins: [require('tailwindcss-animate'),
+  plugins: [
+    require('tailwindcss-animate'),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function ({ addUtilities, theme }: { addUtilities: any, theme: any }) {
+    function ({ addUtilities, theme }: { addUtilities: any; theme: any }) {
       const newUtilities = {
-        '.animation-delay-1500': {
-          'animation-delay': theme('animationDelay.1500'),
-        },
-        '.animation-delay-2000': {
-          'animation-delay': theme('animationDelay.2000'),
-        },
-        '.animation-delay-4000': {
-          'animation-delay': theme('animationDelay.4000'),
-        },
-      }
-      addUtilities(newUtilities, ['responsive', 'hover'])
-    }
+        '.animation-delay-1500': { 'animation-delay': theme('animationDelay.1500') },
+        '.animation-delay-2000': { 'animation-delay': theme('animationDelay.2000') },
+        '.animation-delay-4000': { 'animation-delay': theme('animationDelay.4000') },
+        '.animation-delay-stagger-1': { 'animation-delay': theme('animationDelay.stagger-1') },
+        '.animation-delay-stagger-2': { 'animation-delay': theme('animationDelay.stagger-2') },
+        '.animation-delay-stagger-3': { 'animation-delay': theme('animationDelay.stagger-3') },
+        '.animation-delay-stagger-4': { 'animation-delay': theme('animationDelay.stagger-4') },
+        '.animation-delay-stagger-5': { 'animation-delay': theme('animationDelay.stagger-5') },
+        '.animation-delay-stagger-6': { 'animation-delay': theme('animationDelay.stagger-6') },
+        '.animation-delay-stagger-7': { 'animation-delay': theme('animationDelay.stagger-7') },
+        '.animation-delay-stagger-8': { 'animation-delay': theme('animationDelay.stagger-8') },
+      };
+      addUtilities(newUtilities, ['responsive', 'hover']);
+    },
   ],
 } satisfies Config;

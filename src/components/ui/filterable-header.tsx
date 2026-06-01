@@ -118,7 +118,7 @@ export function FilterableHeader<T extends string>({
                     <Button 
                         variant="ghost" 
                         onClick={() => onSort(field)} 
-                        className="px-2 py-1 h-8 shrink-0 flex items-center gap-1 font-medium text-foreground hover:bg-accent/50"
+                        className="px-2 py-1 h-8 shrink-0 flex items-center gap-1 font-medium text-gray-500 hover:bg-accent/50"
                     >
                         <span className="truncate">{label}</span>
                         {sortBy === field && (
@@ -126,7 +126,7 @@ export function FilterableHeader<T extends string>({
                         )}
                     </Button>
                 ) : (
-                    <div className="px-2 py-1 shrink-0 truncate font-medium text-foreground">
+                    <div className="px-2 py-1 shrink-0 truncate font-medium text-gray-500">
                         {label}
                     </div>
                 )}

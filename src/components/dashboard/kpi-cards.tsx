@@ -30,23 +30,23 @@ type KpiCardProps = {
 }
 
 const KpiCard = ({ title, value, icon, onClick, description, isHighlighted }: KpiCardProps) => (
-    <Card
+    <div
         onClick={onClick}
         className={cn(
-            "transition-all duration-300 animate-in fade-in-0 scale-95",
-            onClick && "cursor-pointer hover:shadow-primary/20 hover:shadow-lg hover:-translate-y-1 hover:scale-100",
+            "bg-white/5 border border-white/10 rounded-2xl md:rounded-[20px] p-4 md:p-6 hover:bg-white/10 transition-colors backdrop-blur-md animate-bounce-in text-white",
+            onClick && "cursor-pointer hover:shadow-primary/20 hover:shadow-lg hover:-translate-y-1 hover:scale-100 active:animate-haptic-press",
             isHighlighted && "animate-pulse-green"
         )}
     >
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <div className="flex flex-row items-center justify-between space-y-0 mb-2 md:mb-4">
+            <p className="text-xs md:text-sm font-medium text-gray-400">{title}</p>
             {icon}
-        </CardHeader>
-        <CardContent>
-            <div className="text-2xl font-bold">{value}</div>
-            {description && <p className="text-xs text-muted-foreground">{description}</p>}
-        </CardContent>
-    </Card>
+        </div>
+        <div>
+            <p className="text-2xl md:text-4xl font-bold mb-1 md:mb-2">{value}</p>
+            {description && <p className="text-[10px] md:text-xs text-gray-500">{description}</p>}
+        </div>
+    </div>
 );
 
 
@@ -110,7 +110,16 @@ export function DashboardKPIs({
     return (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
             {kpiData.map((kpi, index) => (
-                <div key={kpi.title} className="animate-in fade-in-0 slide-in-from-bottom-4" style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'forwards' }}>
+                <div
+                    key={kpi.title}
+                    className={cn(
+                        "animate-slide-up",
+                        index === 0 && "animation-delay-stagger-1",
+                        index === 1 && "animation-delay-stagger-2",
+                        index === 2 && "animation-delay-stagger-3",
+                        index === 3 && "animation-delay-stagger-4"
+                    )}
+                >
                     <KpiCard {...kpi} />
                 </div>
             ))}

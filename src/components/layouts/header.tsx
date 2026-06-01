@@ -268,7 +268,7 @@ export default function Header({
 
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur-sm sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-white/20 dark:border-white/10 bg-background/60 px-4 backdrop-blur-xl shadow-sm sm:px-6 transition-all">
         <MobileSidebarToggle />
        <div className="flex items-center gap-2 text-foreground">
         <ModernHouseIcon className="h-6 w-6 text-primary" />

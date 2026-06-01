@@ -200,7 +200,7 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
               className={`px-2 py-0.5 text-[10px] font-medium rounded-full border transition-all ${
                 statusFilter === filter
                   ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
               }`}
             >
               {filter === 'Aktywne' ? '🔥' : filter === 'Wszystkie' ? '📋' : filter === 'Nie przyjęte' ? '🔴' : filter === 'W trakcie' ? '🟡' : '🟢'} {
@@ -270,7 +270,7 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
                                 ? status === 'Nie przyjęte' ? 'bg-red-500/10 text-red-600 border-red-500/30 animate-pulse'
                                 : status === 'W trakcie' ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30 animate-pulse'
                                 : 'bg-green-500/10 text-green-600 border-green-500/30 animate-pulse'
-                                : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                             } ${updatingCommentId === item.commentId && 'opacity-50 cursor-not-allowed'}`}
                           >
                             {status === 'Nie przyjęte' ? '🔴' : status === 'W trakcie' ? '🟡' : '🟢'} {statusLabelMap[status]}
