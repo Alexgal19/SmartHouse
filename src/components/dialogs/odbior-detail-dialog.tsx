@@ -382,12 +382,13 @@ function EditZgloszenieForm({
 // ─── Karta — Nieprzyjęte ─────────────────────────────────────────────────────
 
 function KartaNieprzyjete({
-    z, onAction, onEdit, canEdit,
+    z, onAction, onEdit, canEdit, canChangeStatus,
 }: {
     z: OdbiorZgloszenie;
     onAction: (action: 'przyjmij') => Promise<void>;
     onEdit: (updates: Partial<OdbiorZgloszenie>) => Promise<void>;
     canEdit: boolean;
+    canChangeStatus?: boolean;
 }) {
     const { t } = useLanguage();
     const [loading, setLoading] = useState<'przyjmij' | null>(null);
@@ -415,11 +416,13 @@ function KartaNieprzyjete({
                             {t('odbior.editData')}
                         </Button>
                     )}
-                    <div className="flex gap-3">
-                        <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" disabled={!!loading} onClick={() => handle('przyjmij')}>
-                            {loading === 'przyjmij' ? t('odbior.accepting') : t('odbior.accept')}
-                        </Button>
-                    </div>
+                    {canChangeStatus && (
+                        <div className="flex gap-3">
+                            <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" disabled={!!loading} onClick={() => handle('przyjmij')}>
+                                {loading === 'przyjmij' ? t('odbior.accepting') : t('odbior.accept')}
+                            </Button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -591,13 +594,14 @@ function AddPersonDialog({
 // ─── Karta — W trakcie ───────────────────────────────────────────────────────
 
 function KartaWTrakcie({
-    z, onAction, onZakwaterowanieClick, onEdit, canEdit,
+    z, onAction, onZakwaterowanieClick, onEdit, canEdit, canChangeStatus,
 }: {
     z: OdbiorZgloszenie;
     onAction: (action: 'odrzuc' | 'zakoncz' | 'update', payload: Partial<OdbiorZgloszenie>) => Promise<void>;
     onZakwaterowanieClick?: (osoba: OsobaWOdbiorze | null, idx: number | null) => void;
     onEdit: (updates: Partial<OdbiorZgloszenie>) => Promise<void>;
     canEdit: boolean;
+    canChangeStatus?: boolean;
 }) {
     const { t } = useLanguage();
     const [localOsoby, setLocalOsoby] = useState<OsobaWOdbiorze[]>(() => parseOsoby(z.osoby));
@@ -821,33 +825,37 @@ function KartaWTrakcie({
                                             <Badge variant="outline" className={cn("animate-pulse", o.wybranyKrok === 'zakwaterowanie' ? "text-blue-600 border-blue-200 bg-blue-50" : "text-purple-600 border-purple-200 bg-purple-50")}>
                                                 {o.wybranyKrok === 'zakwaterowanie' ? 'Oczekuje na zakwaterowanie' : 'Oczekuje na rozmowę'}
                                             </Badge>
-                                            <Button 
-                                                size="sm" 
-                                                className={cn("h-7 text-xs shadow-none text-white", o.wybranyKrok === 'zakwaterowanie' ? "bg-blue-600 hover:bg-blue-700" : "bg-purple-600 hover:bg-purple-700")}
-                                                onClick={() => o.wybranyKrok === 'zakwaterowanie' ? onZakwaterowanieClick?.(o, i) : setConfirmRozmowaPrompt({ person: o, index: i })}
-                                            >
-                                                {o.wybranyKrok === 'zakwaterowanie' ? <Bed className="w-3.5 h-3.5 mr-1" /> : <Users className="w-3.5 h-3.5 mr-1" />}
-                                                {o.wybranyKrok === 'zakwaterowanie' ? 'Rozpocznij zakwaterowanie' : 'Przekaż do rekrutacji'}
-                                            </Button>
+                                            {canChangeStatus && (
+                                                <Button
+                                                    size="sm"
+                                                    className={cn("h-7 text-xs shadow-none text-white", o.wybranyKrok === 'zakwaterowanie' ? "bg-blue-600 hover:bg-blue-700" : "bg-purple-600 hover:bg-purple-700")}
+                                                    onClick={() => o.wybranyKrok === 'zakwaterowanie' ? onZakwaterowanieClick?.(o, i) : setConfirmRozmowaPrompt({ person: o, index: i })}
+                                                >
+                                                    {o.wybranyKrok === 'zakwaterowanie' ? <Bed className="w-3.5 h-3.5 mr-1" /> : <Users className="w-3.5 h-3.5 mr-1" />}
+                                                    {o.wybranyKrok === 'zakwaterowanie' ? 'Rozpocznij zakwaterowanie' : 'Przekaż do rekrutacji'}
+                                                </Button>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="flex flex-col gap-2">
                                             <Badge variant="outline" className="w-fit text-amber-600 border-amber-200 bg-amber-50">Wybierz krok</Badge>
-                                            <div className="flex gap-2">
-                                                <Button size="sm" variant="outline" className="flex-1 h-7 text-xs text-blue-700 border-blue-200 hover:bg-blue-50" onClick={() => {
-                                                    const updated = [...localOsoby];
-                                                    updated[i] = { ...updated[i], wybranyKrok: 'zakwaterowanie', statusKrok: 'pending' };
-                                                    saveOsoby(updated);
-                                                    onZakwaterowanieClick?.(updated[i], i);
-                                                }}>
-                                                    <Bed className="w-3.5 h-3.5 mr-1" /> Zakwaterowanie
-                                                </Button>
-                                                <Button size="sm" variant="outline" className="flex-1 h-7 text-xs text-purple-700 border-purple-200 hover:bg-purple-50" onClick={() => {
-                                                    setConfirmRozmowaPrompt({ person: o, index: i });
-                                                }}>
-                                                    <Users className="w-3.5 h-3.5 mr-1" /> Rozmowa
-                                                </Button>
-                                            </div>
+                                            {canChangeStatus && (
+                                                <div className="flex gap-2">
+                                                    <Button size="sm" variant="outline" className="flex-1 h-7 text-xs text-blue-700 border-blue-200 hover:bg-blue-50" onClick={() => {
+                                                        const updated = [...localOsoby];
+                                                        updated[i] = { ...updated[i], wybranyKrok: 'zakwaterowanie', statusKrok: 'pending' };
+                                                        saveOsoby(updated);
+                                                        onZakwaterowanieClick?.(updated[i], i);
+                                                    }}>
+                                                        <Bed className="w-3.5 h-3.5 mr-1" /> Zakwaterowanie
+                                                    </Button>
+                                                    <Button size="sm" variant="outline" className="flex-1 h-7 text-xs text-purple-700 border-purple-200 hover:bg-purple-50" onClick={() => {
+                                                        setConfirmRozmowaPrompt({ person: o, index: i });
+                                                    }}>
+                                                        <Users className="w-3.5 h-3.5 mr-1" /> Rozmowa
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -956,24 +964,26 @@ function KartaWTrakcie({
                 </AlertDialogContent>
             </AlertDialog>
 
-            <div className="flex gap-3 pt-2">
-                <Button
-                    variant="outline"
-                    className="flex-1"
-                    disabled={loading}
-                    onClick={() => setRejectAlertOpen(true)}
-                >
-                    {t('odbior.reject')}
-                </Button>
-                <Button
-                    className={cn("flex-1 text-white gap-2 transition-all", isAllCompleted ? "bg-green-600 hover:bg-green-700" : "bg-gray-300 hover:bg-gray-300")}
-                    disabled={loading || !isAllCompleted}
-                    onClick={handleTryZakoncz}
-                >
-                    <Check className="h-4 w-4" />
-                    {loading ? t('odbior.finishing') : t('odbior.finishReception')}
-                </Button>
-            </div>
+            {canChangeStatus && (
+                <div className="flex gap-3 pt-2">
+                    <Button
+                        variant="outline"
+                        className="flex-1"
+                        disabled={loading}
+                        onClick={() => setRejectAlertOpen(true)}
+                    >
+                        {t('odbior.reject')}
+                    </Button>
+                    <Button
+                        className={cn("flex-1 text-white gap-2 transition-all", isAllCompleted ? "bg-green-600 hover:bg-green-700" : "bg-gray-300 hover:bg-gray-300")}
+                        disabled={loading || !isAllCompleted}
+                        onClick={handleTryZakoncz}
+                    >
+                        <Check className="h-4 w-4" />
+                        {loading ? t('odbior.finishing') : t('odbior.finishReception')}
+                    </Button>
+                </div>
+            )}
         </div>
             )}
         </div>
@@ -1239,7 +1249,8 @@ export default function OdbiorDetailDialog({
                             z={localZ}
                             onAction={handleNieprzyjeteAction}
                             onEdit={handleEditDane}
-                            canEdit={currentUser.isAdmin || currentUser.isRekrutacja}
+                            canEdit={currentUser.isAdmin || currentUser.isRekrutacja || !!currentUser.isGuest}
+                            canChangeStatus={!currentUser.isGuest}
                         />
                     </TabsContent>
 
@@ -1249,7 +1260,8 @@ export default function OdbiorDetailDialog({
                             onAction={handleWTrakcieAction}
                             onZakwaterowanieClick={handleZakwaterowanieClick}
                             onEdit={handleEditDane}
-                            canEdit={currentUser.isAdmin || currentUser.isRekrutacja}
+                            canEdit={currentUser.isAdmin || currentUser.isRekrutacja || !!currentUser.isGuest}
+                            canChangeStatus={!currentUser.isGuest}
                         />
                     </TabsContent>
 
@@ -1259,7 +1271,7 @@ export default function OdbiorDetailDialog({
                             isAdmin={currentUser.isAdmin}
                             onCancelFinish={handleCancelFinish}
                             onEdit={handleEditDane}
-                            canEdit={currentUser.isAdmin || currentUser.isRekrutacja}
+                            canEdit={currentUser.isAdmin || currentUser.isRekrutacja || !!currentUser.isGuest}
                         />
                     </TabsContent>
                 </Tabs>
