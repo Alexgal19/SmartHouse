@@ -6,15 +6,15 @@
 ## Architektura systemu
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                      ORCHESTRATOR (TY)                      │
-│              (Główny koordynator zadań)                     │
-│  Analyze → Decompose → Assign → Review → Integrate → Ship  │
-└──────┬──────────┬──────────┬──────────┬───────────┬────────┘
-       │          │          │          │           │
-       ▼          ▼          ▼          ▼           ▼
-  [FRONTEND]  [BACKEND]  [DATABASE]  [DEVOPS]   [QA]
-   Agent        Agent      Agent      Agent     Agent
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            ORCHESTRATOR (TY)                                │
+│                   (Główny koordynator zadań)                                │
+│  Analyze → Decompose → Assign → Review → Integrate → Validate → Enforce → Ship │
+└──────┬──────────┬──────────┬──────────┬───────────┬───────────┬────────────┬────────┘
+       │          │          │          │           │           │            │
+       ▼          ▼          ▼          ▼           ▼           ▼            ▼
+  [FRONTEND]  [BACKEND]  [DATABASE]  [DEVOPS]   [QA]    [COVERAGE]   [POST-DEPLOY]
+   Agent        Agent      Agent      Agent     Agent   ENFORCER      VALIDATOR
 ```
 
 ---
@@ -254,6 +254,88 @@ interface QAAgentTask {
 
 ---
 
+## AGENT: COVERAGE ENFORCER
+
+**Specjalizacja:** Wykrywanie nowych/edytowanych plików bez testów, generowanie minimalnych test stubs, wymuszanie pokrycia testowego jako blokada deployu
+
+**Zakres plików:**
+
+- `scripts/coverage-enforcer.mjs`
+- `.github/workflows/coverage-enforcer.yml`
+- `src/__tests__/auto-generated/**` (tymczasowe, generowane w CI)
+- `src/lib/**`, `src/app/api/**`, `src/components/**`
+
+**Protokół działania:**
+
+```typescript
+interface CoverageEnforcerTask {
+  // 1. DETECT — po commicie/pushu, przed deployem
+  detectUntested: 'git diff origin/main...HEAD → pliki src/ bez testów';
+
+  // 2. GENERATE — auto-generowanie minimalnych test stubs
+  generateStubs: 'Użyj scripts/coverage-enforcer.mjs żeby wygenerować testy';
+
+  // 3. VALIDATE — uruchomienie i ocena
+  runTests: 'npm test -- --findRelatedTests (wygenerowane + zmienione)';
+  decide: 'Green → kod idzie dalej; Red → BLOCKER, nie deployować';
+
+  // 4. REPORT
+  reportMissing: 'W raporcie wymień pliki bez testów (deweloper powinien napisać własne)';
+}
+```
+
+**Reguły:**
+
+- Generuje testy TYLKO dla plików w `src/` które nie mają odpowiednika `*.test.ts` lub `*.spec.ts`
+- Nie nadpisuje istniejących testów napisanych przez deweloperów
+- Wygenerowane testy są **tymczasowe** — nie trafiają do repo, uruchamiane wyłącznie w CI
+- Jeśli wygenerowane testy są czerwone → `BLOCKER` do Orchestratora, deploy zatrzymany
+- Deweloper powinien napisać własne testy dla plików wymienionych w raporcie
+- Działa zawsze **sekwencyjnie** po QA Agencie i **przed** Post-Deploy Validator
+
+---
+
+## AGENT: POST-DEPLOY VALIDATOR
+
+**Specjalizacja:** Automatyczna walidacja po deployu, smoke tests, wykrywanie regresji, blokowanie wypuszczenia uszkodzonego kodu
+
+**Zakres plików:**
+
+- `tests/**`
+- `.github/workflows/**`
+- `scripts/**`
+- `playwright.config.ts`, `playwright.smoke.config.ts`
+
+**Protokół działania:**
+
+```typescript
+interface PostDeployValidatorTask {
+  // 1. ANALIZA ZMIAN
+  mapChangedFiles: 'Identyfikuj pliki zmienione przez Frontend/Backend Agenta';
+  findRelatedTests: 'Użyj scripts/test-impact.mjs żeby zmapować zmiany na testy';
+
+  // 2. WALIDACJA LOKALNA (przed DELIVER)
+  unitTests: 'Uruchom npm test -- --findRelatedTests (zmienione pliki)';
+  e2eTests: 'Uruchom npx playwright test (powiązane spec-y)';
+  blockDeliver: 'Jeśli czerwony → BLOCKER do Orchestratora, nie pozwól na DELIVER';
+
+  // 3. WALIDACJA POST-DEPLOY (po main push)
+  pollHealth: 'Sprawdź /api/health na produkcji — czy deploy żyje?';
+  smokeTests: 'Uruchom smarthouse_regression.spec.ts na TEST_BASE_URL=prod';
+  dataGuard: 'Sprawdź /api/data-guard — czy dane są integralne?';
+  createIssue: 'Jeśli red → utwórz GitHub Issue z label regression + critical';
+}
+```
+
+**Reguły:**
+
+- Nigdy nie pozwól na DELIVER jeśli jakikolwiek gate (lokalny / CI / post-deploy) jest czerwony
+- Smoke tests na produkcji muszą używać `playwright.smoke.config.ts` (bez lokalnego dev server)
+- Po wykryciu regresji natychmiast zgłoś do Orchestratora i DevOps Agenta (rollback)
+- Nie uruchamiaj post-deploy smoke ręcznie — używaj wyłącznie `.github/workflows/post-deploy-smoke.yml`
+
+---
+
 ## Protokół komunikacji między agentami
 
 ### Format przekazywania zadania
@@ -308,11 +390,15 @@ RÓWNOLEGLE (bez zależności):
   → mogą pracować jednocześnie nad różnymi aspektami tej samej funkcji
 
 SEKWENCYJNIE (zależności):
-  Database Agent → Backend Agent → Frontend Agent → QA Agent
+  Database Agent → Backend Agent → Frontend Agent → QA Agent → Coverage Enforcer → Post-Deploy Validator
   → gdy jeden etap zależy od rezultatu poprzedniego
 ```
 
 **Orchestrator decyduje** na podstawie grafu zależności zadania, które agenty uruchomić równolegle a które w sekwencji.
+
+> **Coverage Enforcer zawsze sekwencyjnie:** Działa PO zakończeniu QA Agenta i PRZED deployem. Wykrywa pliki bez testów, generuje stubs, uruchamia je. Nigdy nie równolegle z innymi agentami.
+
+> **Post-Deploy Validator zawsze sekwencyjnie:** Działa PO zakończeniu Coverage Enforcera i PO deploy na main. Nigdy nie równolegle z innymi agentami. Orchestrator dispatchuje go automatycznie w kroku ENFORCE przed DELIVER.
 
 ---
 

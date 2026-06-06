@@ -1,0 +1,30 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🔍 Pre-push gate — running type check + unit tests for changed files..."
+
+# Type check
+npx tsc --noEmit || exit 1
+
+# Get changed files compared to origin/main
+CHANGED=$(git diff --name-only origin/main...HEAD 2>/dev/null || git diff --name-only HEAD~1...HEAD)
+
+if [ -z "$CHANGED" ]; then
+  echo "✅ No changed files to test"
+  exit 0
+fi
+
+# Filter only src files
+SRC_CHANGED=$(echo "$CHANGED" | grep -E '^src/' || true)
+
+if [ -z "$SRC_CHANGED" ]; then
+  echo "✅ No source files changed, skipping unit tests"
+  exit 0
+fi
+
+echo "🧪 Running related unit tests for:"
+echo "$SRC_CHANGED"
+
+npm test -- --findRelatedTests $SRC_CHANGED || exit 1
+
+echo "✅ Pre-push gate passed"

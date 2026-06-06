@@ -1,0 +1,141 @@
+name: Post-Deploy Smoke Tests
+
+on:
+  workflow_run:
+    workflows: ['CI — Lint, Test, Build']
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'URL to test (default: production)'
+        required: false
+        default: 'https://sw-house.pl'
+
+concurrency:
+  group: post-deploy-smoke-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Smoke Tests on Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Wait for deploy to be live
+        run: |
+          TARGET_URL="${{ github.event.inputs.target_url || 'https://sw-house.pl' }}"
+          echo "Polling $TARGET_URL/api/health ..."
+          for i in {1..30}; do
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$TARGET_URL/api/health" || echo "000")
+            if [ "$RESPONSE" = "200" ]; then
+              echo "✅ Deploy is live (HTTP 200)"
+              exit 0
+            fi
+            echo "Attempt $i/30: HTTP $RESPONSE — waiting 10s"
+            sleep 10
+          done
+          echo "❌ Deploy did not become live within 5 minutes"
+          exit 1
+
+      - name: Run smoke tests on production
+        run: npx playwright test --config playwright.smoke.config.ts
+        env:
+          TEST_ADMIN_NAME: ${{ secrets.TEST_ADMIN_NAME || 'admin' }}
+          TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD || 'stub' }}
+          TEST_BASE_URL: ${{ github.event.inputs.target_url || 'https://sw-house.pl' }}
+          # Playwright smoke config disables webServer; these vars are not needed but kept for safety
+          SECRET_COOKIE_PASSWORD: ${{ secrets.SECRET_COOKIE_PASSWORD || 'ci-stub' }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD || 'stub' }}
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL || 'ci@example.com' }}
+          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY || '{}' }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID || 'stub' }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-report
+          path: |
+            playwright-report/smoke/
+            test-results/
+          retention-days: 7
+
+      - name: Data Guard check
+        if: always()
+        run: |
+          TARGET_URL="${{ github.event.inputs.target_url || 'https://sw-house.pl' }}"
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "$TARGET_URL/api/data-guard" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          echo "HTTP status: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Data Guard endpoint returned HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+          ANOMALY_COUNT=$(echo "$BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('anomalies', [])))" 2>/dev/null || echo "0")
+          echo "Anomalies detected: $ANOMALY_COUNT"
+
+          if [ "$ANOMALY_COUNT" != "0" ]; then
+            echo "::error::$ANOMALY_COUNT anomalies detected in Google Sheets after deploy!"
+            exit 1
+          fi
+
+          echo "✅ Data Guard — no anomalies"
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `[regression] Post-deploy smoke tests failed — ${new Date().toISOString()}`;
+            const body = `
+            ## Post-Deploy Smoke Tests Failed
+
+            - **Commit:** ${{ github.sha }}
+            - **Branch:** ${{ github.ref_name }}
+            - **Workflow:** ${{ github.workflow }}
+            - **Run URL:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            ### Required Actions
+            1. Check the smoke test artifacts (screenshots + report).
+            2. Verify if the failure is a real regression or a flaky test.
+            3. If confirmed regression — consider rollback via \`firebase apphosting:releases:rollback\`.
+            4. Update \`LESSONS_LEARNED.md\` if a new failure pattern was found.
+            `;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['regression', 'critical']
+            });
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Post-Deploy Smoke ${{ job.status == 'success' && '✅' || '❌' }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL: ${{ github.event.inputs.target_url || 'https://sw-house.pl' }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Time: $(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_STEP_SUMMARY"

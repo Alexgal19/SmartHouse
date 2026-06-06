@@ -1,0 +1,80 @@
+{
+  "rules": [
+    {
+      "pattern": "src/lib/auth.ts",
+      "tests": ["*"]
+    },
+    {
+      "pattern": "src/lib/sheets.ts",
+      "tests": ["*"]
+    },
+    {
+      "pattern": "src/app/api/**",
+      "tests": ["tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/components/views/odbior-view.tsx",
+      "tests": ["tests/odbior-flow.spec.ts", "tests/full-odbior-to-recruitment-flow.spec.ts", "tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/components/views/control-cards-view.tsx",
+      "tests": ["tests/control-cards-comments.spec.ts", "tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/components/views/housing-view.tsx",
+      "tests": ["tests/housing.spec.ts", "tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/components/views/recruitment-view.tsx",
+      "tests": ["tests/full-odbior-to-recruitment-flow.spec.ts", "tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/components/views/settings-view.tsx",
+      "tests": ["tests/settings.spec.ts", "tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/components/views/entity-view.tsx",
+      "tests": ["tests/employee.spec.ts", "tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/components/**",
+      "tests": ["tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/app/dashboard/**",
+      "tests": ["tests/dashboard.spec.ts", "tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/app/api/odbior/**",
+      "tests": ["tests/odbior-flow.spec.ts", "tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/app/api/control-cards/**",
+      "tests": ["tests/control-cards-comments.spec.ts", "tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/app/api/alerts/**",
+      "tests": ["tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/app/api/verify-passport/**",
+      "tests": ["tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/app/api/employees/**",
+      "tests": ["tests/employee.spec.ts", "tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/app/api/start-lists/**",
+      "tests": ["tests/start-lists.spec.ts", "tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/app/api/import/**",
+      "tests": ["tests/import.spec.ts", "tests/smarthouse_regression.spec.ts"]
+    },
+    {
+      "pattern": "src/app/api/reports/**",
+      "tests": ["tests/reports.spec.ts", "tests/smarthouse_regression.spec.ts"]
+    }
+  ]
+}
