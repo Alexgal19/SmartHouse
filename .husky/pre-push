@@ -1,6 +1,3 @@
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
 echo "🔍 Pre-push gate — running type check + unit tests for changed files..."
 
 # Type check
