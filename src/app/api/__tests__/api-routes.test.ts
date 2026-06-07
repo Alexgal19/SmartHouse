@@ -1,14 +1,20 @@
 /**
  * @jest-environment node
  */
-// Testy dla API routes: alerts/mine, employees/stats, start-lists, data-guard
+/**
+ * @jest-environment node
+ */
+// Testy dla API routes: alerts/mine, employees/stats, start-lists, data-guard, alerts, control-cards, verify-passport
 import { GET as GetAlertsMine } from '../alerts/mine/route';
 import { GET as GetEmployeeStats } from '../employees/stats/route';
 import { GET as GetStartLists } from '../start-lists/route';
 import { GET as GetDataGuard, POST as PostDataGuard } from '../data-guard/route';
+import { POST as PostAlerts } from '../alerts/route';
+import { GET as GetControlCards } from '../control-cards/route';
+import { POST as PostVerifyPassport } from '../verify-passport/route';
 import { NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getEmployees, getNonEmployees, getBokResidents, getSettings, getStartLists } from '@/lib/sheets';
+import { getEmployees, getNonEmployees, getBokResidents, getSettings, getStartLists, getControlCards } from '@/lib/sheets';
 
 jest.mock('@/lib/sheets', () => ({
     getEmployees: jest.fn(),
@@ -16,9 +22,13 @@ jest.mock('@/lib/sheets', () => ({
     getBokResidents: jest.fn(),
     getSettings: jest.fn(),
     getStartLists: jest.fn(),
+    getControlCards: jest.fn(),
 }));
 
 jest.mock('@/lib/alert-utils', () => ({
+    alertToday: jest.fn().mockReturnValue(new Date('2024-06-01')),
+    parseAlertDate: jest.fn().mockImplementation((val: string) => (val ? new Date(val) : null)),
+    daysDiff: jest.fn().mockImplementation((a: Date, b: Date) => Math.floor((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24))),
     extractAlertDetails: jest.fn().mockReturnValue({
         contractExpiry: [],
         capacityExceeded: [],
@@ -29,6 +39,7 @@ jest.mock('@/lib/alert-utils', () => ({
 
 jest.mock('@/lib/actions', () => ({
     sendPushNotification: jest.fn().mockResolvedValue({ success: true }),
+    checkAndUpdateStatuses: jest.fn().mockResolvedValue({ updated: 0 }),
 }));
 
 // Mock google-spreadsheet for data-guard
@@ -80,6 +91,7 @@ const mockedGetNonEmployees = getNonEmployees as jest.Mock;
 const mockedGetBokResidents = getBokResidents as jest.Mock;
 const mockedGetSettings = getSettings as jest.Mock;
 const mockedGetStartLists = getStartLists as jest.Mock;
+const mockedGetControlCards = getControlCards as jest.Mock;
 
 const adminSession = { isLoggedIn: true, uid: 'coord-1', name: 'Admin', isAdmin: true, isDriver: false };
 const regularSession = { isLoggedIn: true, uid: 'coord-1', name: 'Koordynator', isAdmin: false, isDriver: false };
@@ -109,6 +121,7 @@ beforeEach(() => {
     mockedGetNonEmployees.mockResolvedValue([]);
     mockedGetBokResidents.mockResolvedValue([]);
     mockedGetStartLists.mockResolvedValue([]);
+    mockedGetControlCards.mockResolvedValue([]);
 });
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -259,5 +272,136 @@ describe('GET /api/data-guard', () => {
         expect(res.status).toBe(200);
         const body = await res.json();
         expect(body).toHaveProperty('snapshot');
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// POST /api/alerts (CRON protected)
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('POST /api/alerts', () => {
+    it('returns 401 without Authorization header', async () => {
+        const res = await PostAlerts(makeCronRequest('POST'));
+        expect(res.status).toBe(401);
+    });
+
+    it('returns 401 with wrong CRON_SECRET', async () => {
+        const res = await PostAlerts(makeCronRequest('POST', 'wrong-secret'));
+        expect(res.status).toBe(401);
+    });
+
+    it('runs alert check and returns summary with correct secret', async () => {
+        mockedGetEmployees.mockResolvedValue([
+            { id: 'e1', fullName: 'Jan Kowalski', status: 'active', coordinatorId: 'coord-1', contractEndDate: '2099-12-31' },
+        ]);
+        mockedGetNonEmployees.mockResolvedValue([]);
+        mockedGetBokResidents.mockResolvedValue([]);
+        mockedGetSettings.mockResolvedValue({
+            ...mockSettings,
+            addresses: [{ id: 'a1', name: 'Test', coordinatorIds: ['coord-1'], rooms: [{ id: 'r1', name: '101', capacity: 2, isActive: true }] }],
+        });
+
+        const res = await PostAlerts(makeCronRequest('POST', CRON_SECRET));
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body.ok).toBe(true);
+        expect(body).toHaveProperty('checkedAt');
+        expect(body).toHaveProperty('summary');
+        expect(body).toHaveProperty('details');
+        expect(body.summary).toHaveProperty('contractExpiry');
+        expect(body.summary).toHaveProperty('capacityExceeded');
+        expect(body.summary).toHaveProperty('missingPaymentData');
+        expect(body.summary).toHaveProperty('duplicatePersons');
+    });
+
+    it('returns 500 on internal error', async () => {
+        mockedGetEmployees.mockRejectedValue(new Error('Sheet error'));
+        const res = await PostAlerts(makeCronRequest('POST', CRON_SECRET));
+        expect(res.status).toBe(500);
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// GET /api/control-cards
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('GET /api/control-cards', () => {
+    it('returns 401 when not authenticated', async () => {
+        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: false });
+        const res = await GetControlCards();
+        expect(res.status).toBe(401);
+    });
+
+    it('returns control cards for authenticated user', async () => {
+        (getSession as jest.Mock).mockResolvedValue(regularSession);
+        mockedGetControlCards.mockResolvedValue([
+            { id: 'c1', employeeId: 'e1', date: '2024-01-01', meters: true },
+        ]);
+
+        const res = await GetControlCards();
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body).toHaveLength(1);
+        expect(body[0].id).toBe('c1');
+    });
+
+    it('returns 500 on internal error', async () => {
+        (getSession as jest.Mock).mockResolvedValue(regularSession);
+        mockedGetControlCards.mockRejectedValue(new Error('Sheet error'));
+
+        const res = await GetControlCards();
+        expect(res.status).toBe(500);
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// POST /api/verify-passport
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('POST /api/verify-passport', () => {
+    it('returns 401 when not authenticated', async () => {
+        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: false });
+        const req = new NextRequest('http://localhost/api/verify-passport', {
+            method: 'POST',
+            body: JSON.stringify({ input: 'test', type: 'quick' }),
+        });
+        const res = await PostVerifyPassport(req);
+        expect(res.status).toBe(401);
+    });
+
+    it('returns 400 when body is missing required fields', async () => {
+        (getSession as jest.Mock).mockResolvedValue(regularSession);
+        const req = new NextRequest('http://localhost/api/verify-passport', {
+            method: 'POST',
+            body: JSON.stringify({ input: 'test' }),
+        });
+        const res = await PostVerifyPassport(req);
+        expect(res.status).toBe(400);
+    });
+
+    it('returns valid=true when hash matches quick secret', async () => {
+        (getSession as jest.Mock).mockResolvedValue(regularSession);
+        process.env.PASSPORT_HASH_QUICK = 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3';
+        const req = new NextRequest('http://localhost/api/verify-passport', {
+            method: 'POST',
+            body: JSON.stringify({ input: '123', type: 'quick' }),
+        });
+        const res = await PostVerifyPassport(req);
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body.valid).toBe(true);
+    });
+
+    it('returns valid=false when hash does not match', async () => {
+        (getSession as jest.Mock).mockResolvedValue(regularSession);
+        process.env.PASSPORT_HASH_QUICK = 'wrong-hash';
+        const req = new NextRequest('http://localhost/api/verify-passport', {
+            method: 'POST',
+            body: JSON.stringify({ input: '123', type: 'quick' }),
+        });
+        const res = await PostVerifyPassport(req);
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body.valid).toBe(false);
     });
 });

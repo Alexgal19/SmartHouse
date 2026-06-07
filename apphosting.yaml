@@ -30,3 +30,21 @@ env:
     secret: CRON_SECRET
   - variable: NEXT_PUBLIC_APP_URL
     value: https://sw-house.pl
+  - variable: PASSPORT_HASH_QUICK
+    secret: PASSPORT_HASH_QUICK
+  - variable: PASSPORT_HASH_FULL
+    secret: PASSPORT_HASH_FULL
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyDQzoMbd1jAjEqmEzkk0uSrNbJ793yXljk
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: studio-6821761262-fdf39.firebaseapp.com
+  - variable: NEXT_PUBLIC_FIREBASE_DATABASE_URL
+    value: https://studio-6821761262-fdf39-default-rtdb.europe-west1.firebasedatabase.app
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: studio-6821761262-fdf39
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: studio-6821761262-fdf39.firebasestorage.app
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "294831457703"
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:294831457703:web:e1e149f283e4eb2418e282

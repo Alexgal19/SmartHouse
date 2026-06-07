@@ -145,7 +145,27 @@ export function DashboardCharts({
 
 
     const chartData = useMemo(() => {
-        const activeEmployees = employees.filter(e => e.status === 'active');
+        const bokCoordinatorIds = new Set(
+            settings?.coordinators
+                .filter(c => c.isBok || c.departments?.includes('BOK'))
+                .map(c => c.uid) || []
+        );
+
+        const bokAddresses = new Set(
+            settings?.addresses
+                .filter(a => a.coordinatorIds.some(id => bokCoordinatorIds.has(id)))
+                .map(a => a.name) || []
+        );
+
+        const EXCLUDED_DEPARTMENTS = ['BOK', 'Odbiór', 'Rekrutacja'];
+
+        const activeEmployees = employees.filter(e => {
+            if (e.status !== 'active') return false;
+            if (EXCLUDED_DEPARTMENTS.includes(e.zaklad || '')) return false;
+            if (bokCoordinatorIds.has(e.coordinatorId)) return false;
+            if (bokAddresses.has(e.address || '')) return false;
+            return true;
+        });
         
         const employeesPerCoordinatorSource = activeEmployees.reduce((acc, employee) => {
             const coordinatorName = settings.coordinators.find(c => c.uid === employee.coordinatorId)?.name || "Unassigned";

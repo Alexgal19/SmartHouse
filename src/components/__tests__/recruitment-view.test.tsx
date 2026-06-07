@@ -37,6 +37,16 @@ if (typeof global.TextEncoder === 'undefined') {
     }
 }
 
+global.fetch = jest.fn((url) => {
+    if (url === '/api/verify-passport') {
+        return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ valid: true })
+        });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+}) as jest.Mock;
+
 let mockDemandId: string | null = null;
 const mockReplace = jest.fn();
 
@@ -60,6 +70,8 @@ jest.mock('@/lib/actions', () => ({
     acknowledgeCandidateDemandAction: jest.fn(),
     recordInterviewResultAction: jest.fn(),
     getOdbiorEntriesAction: jest.fn(),
+    addCandidateAction: jest.fn(),
+    updateCandidateAction: jest.fn(),
 }));
 
 const mockToast = jest.fn();
@@ -93,6 +105,9 @@ import {
     deleteCandidateAction,
     acknowledgeCandidateDemandAction,
     getOdbiorEntriesAction,
+    sendCandidateDemandNotificationAction,
+    addCandidateAction,
+    updateCandidateAction,
 } from '@/lib/actions';
 import { useMainLayout } from '@/components/layouts/main-layout';
 
@@ -101,6 +116,9 @@ const mockGetDemands = getCandidateDemandsAction as jest.Mock;
 const mockDeleteCandidate = deleteCandidateAction as jest.Mock;
 const mockAckDemand = acknowledgeCandidateDemandAction as jest.Mock;
 const mockGetOdbiorEntries = getOdbiorEntriesAction as jest.Mock;
+const mockSendDemandNotification = sendCandidateDemandNotificationAction as jest.Mock;
+const mockAddCandidate = addCandidateAction as jest.Mock;
+const mockUpdateCandidate = updateCandidateAction as jest.Mock;
 
 const mockUser: SessionData = {
     isLoggedIn: true,
@@ -559,6 +577,114 @@ describe('RecruitmentView', () => {
 
         expect(screen.queryByText(/Przyjąć zapotrzebowanie na kandydata/i)).not.toBeInTheDocument();
     });
+    it('submits a demand successfully', async () => {
+        mockGetCandidates.mockResolvedValue([makeCandidate({ status: 'zakwaterowana' })]);
+        mockSendDemandNotification.mockResolvedValue({ success: true, sentCount: 1 });
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
 
+        await waitFor(() => {
+            const desktop = screen.getByTestId('recruitment-desktop');
+            expect(within(desktop).getByText('Kowalski')).toBeInTheDocument();
+        });
+
+        // Open menu
+        const desktop = screen.getByTestId('recruitment-desktop');
+        fireEvent.click(within(desktop).getAllByTestId('mock-dropdown-trigger')[0]);
+        
+        // Click demand button
+        fireEvent.click(screen.getAllByText('Zapotrzebowanie na kandydata')[0]);
+
+        await waitFor(() => {
+            expect(screen.getAllByText('Zapotrzebowanie na kandydata').length).toBeGreaterThanOrEqual(1);
+        });
+
+        fireEvent.change(screen.getByLabelText('Czas dostarczenia'), { target: { value: '12:00' } });
+
+        // Click submit inside the dialog
+        fireEvent.click(screen.getByRole('button', { name: 'Wyślij' }));
+
+        await waitFor(() => {
+            expect(mockSendDemandNotification).toHaveBeenCalled();
+            expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({
+                title: 'Wysłano zapotrzebowanie',
+            }));
+        });
+    });
+
+    it('handles BOK demand from missing source', async () => {
+        const bokResident = {
+            id: 'bok-demand-1',
+            firstName: 'Janusz',
+            lastName: 'Bokowski',
+            passportNumber: 'PASS123',
+            address: 'Ulica 1',
+            roomNumber: '10',
+            status: 'active' as const,
+            nationality: '',
+            gender: '',
+            checkInDate: '2026-01-01'
+        };
+        (useMainLayout as jest.Mock).mockReturnValue({
+            allEmployees: [],
+            allNonEmployees: [],
+            allBokResidents: [bokResident],
+            allCandidates: null,
+            allDemands: null,
+            settings: { coordinators: [], nationalities: [], departments: [], genders: [], localities: [], addresses: [], statuses: [] },
+            currentUser: mockUser,
+        });
+
+        mockGetCandidates.mockResolvedValue([]);
+        mockAddCandidate.mockResolvedValue({ success: true, candidate: makeCandidate({ id: 'cand-new', bokId: 'bok-demand-1' }) });
+        
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        await waitFor(() => {
+            expect(screen.getAllByText('Bokowski')[0]).toBeInTheDocument();
+        });
+
+        // Click demand button on BOK list
+        fireEvent.click(screen.getAllByText('Zapotrzebowanie')[0]);
+
+        await waitFor(() => {
+            expect(mockAddCandidate).toHaveBeenCalledWith(expect.objectContaining({
+                firstName: 'Janusz',
+                lastName: 'Bokowski',
+            }));
+            expect(screen.getAllByText('Zapotrzebowanie na kandydata').length).toBeGreaterThanOrEqual(1);
+        });
+    });
+
+    it('handles finish candidate action', async () => {
+        mockGetCandidates.mockResolvedValue([makeCandidate({ status: 'zakwaterowana' })]);
+        mockUpdateCandidate.mockResolvedValue({ success: true });
+        
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        await waitFor(() => {
+            const desktop = screen.getByTestId('recruitment-desktop');
+            expect(within(desktop).getByText('Kowalski')).toBeInTheDocument();
+        });
+
+        // Open menu
+        const desktop = screen.getByTestId('recruitment-desktop');
+        fireEvent.click(within(desktop).getAllByTestId('mock-dropdown-trigger')[0]);
+        
+        // Click finish button
+        fireEvent.click(screen.getAllByText('Zakończ')[0]);
+
+        await waitFor(() => {
+            expect(screen.getByText('Zakończenie rozmowy')).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Po rozmowie - zatrudniony' }));
+
+        await waitFor(() => {
+            expect(mockUpdateCandidate).toHaveBeenCalledWith('cand-1', {
+                status: 'po_rozmowie',
+                interviewOutcome: 'employed'
+            });
+        });
+    });
 
 });

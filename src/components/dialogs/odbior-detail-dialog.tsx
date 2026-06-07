@@ -594,7 +594,7 @@ function AddPersonDialog({
 // ─── Karta — W trakcie ───────────────────────────────────────────────────────
 
 function KartaWTrakcie({
-    z, onAction, onZakwaterowanieClick, onEdit, canEdit, canChangeStatus,
+    z, onAction, onZakwaterowanieClick, onEdit, canEdit, canChangeStatus, isAdmin,
 }: {
     z: OdbiorZgloszenie;
     onAction: (action: 'odrzuc' | 'zakoncz' | 'update', payload: Partial<OdbiorZgloszenie>) => Promise<void>;
@@ -602,6 +602,7 @@ function KartaWTrakcie({
     onEdit: (updates: Partial<OdbiorZgloszenie>) => Promise<void>;
     canEdit: boolean;
     canChangeStatus?: boolean;
+    isAdmin?: boolean;
 }) {
     const { t } = useLanguage();
     const [localOsoby, setLocalOsoby] = useState<OsobaWOdbiorze[]>(() => parseOsoby(z.osoby));
@@ -623,8 +624,7 @@ function KartaWTrakcie({
             const isAllCompleted = localOsoby.every(o => o.statusKrok === 'completed');
             if (isAllCompleted && localOsoby.length > lastCompletedCountRef.current) {
                 lastCompletedCountRef.current = localOsoby.length;
-                const id = setTimeout(() => setAddPersonOpen(true), 300);
-                return () => clearTimeout(id);
+                setAddPersonOpen(true);
             }
         }
     }, [localOsoby, z.iloscOsob]);
@@ -681,11 +681,17 @@ function KartaWTrakcie({
         if (!confirmRozmowaPrompt) return;
         const { index } = confirmRozmowaPrompt;
         const updated = [...localOsoby];
-        updated[index] = { ...updated[index], wybranyKrok: 'rozmowa', statusKrok: 'pending' };
+        updated[index] = { ...updated[index], wybranyKrok: 'rozmowa', statusKrok: 'completed' };
         setLocalOsoby(updated);
-        
         setConfirmRozmowaPrompt(null);
-        
+
+        // Otwórz dialog dla następnej osoby natychmiast (optymistycznie)
+        if (updated.length < z.iloscOsob) {
+            setAddPersonOpen(true);
+            lastCompletedCountRef.current = updated.length;
+        }
+
+        // Wywołania serwerowe w tle
         try {
             const res = await addCandidateAction({
                 firstName: updated[index].imie,
@@ -696,9 +702,9 @@ function KartaWTrakcie({
             });
             if (res.success) {
                 toast({ title: t('candidate.saved') });
-                updated[index] = { ...updated[index], statusKrok: 'completed' };
-                setLocalOsoby(updated);
-                await onAction('update', { osoby: JSON.stringify(updated) });
+                onAction('update', { osoby: JSON.stringify(updated) }).catch(() => {
+                    toast({ variant: 'destructive', title: t('common.error'), description: 'Błąd zapisu' });
+                });
                 window.dispatchEvent(new Event('candidates-updated'));
                 return;
             }
@@ -706,9 +712,6 @@ function KartaWTrakcie({
         } catch (e) {
             toast({ variant: 'destructive', title: t('common.error'), description: String(e) });
         }
-        await onAction('update', { osoby: JSON.stringify(updated) }).catch(() => {
-            toast({ variant: 'destructive', title: t('common.error'), description: 'Błąd zapisu' });
-        });
     };
 
     const handleCancelRozmowa = () => {
@@ -734,6 +737,14 @@ function KartaWTrakcie({
     };
 
     const isAllCompleted = localOsoby.length === z.iloscOsob && localOsoby.every(o => o.statusKrok === 'completed');
+    const finishPromptShownRef = useRef(false);
+
+    useEffect(() => {
+        if (isAllCompleted && !finishPromptShownRef.current && !finishAlertOpen) {
+            finishPromptShownRef.current = true;
+            setFinishAlertOpen(true);
+        }
+    }, [isAllCompleted, finishAlertOpen]);
 
     const handleTryZakoncz = () => {
         if (!isAllCompleted) return;
@@ -966,14 +977,16 @@ function KartaWTrakcie({
 
             {canChangeStatus && (
                 <div className="flex gap-3 pt-2">
-                    <Button
-                        variant="outline"
-                        className="flex-1"
-                        disabled={loading}
-                        onClick={() => setRejectAlertOpen(true)}
-                    >
-                        {t('odbior.reject')}
-                    </Button>
+                    {isAdmin && (
+                        <Button
+                            variant="outline"
+                            className="flex-1"
+                            disabled={loading}
+                            onClick={() => setRejectAlertOpen(true)}
+                        >
+                            {t('odbior.reject')}
+                        </Button>
+                    )}
                     <Button
                         className={cn("flex-1 text-white gap-2 transition-all", isAllCompleted ? "bg-green-600 hover:bg-green-700" : "bg-gray-300 hover:bg-gray-300")}
                         disabled={loading || !isAllCompleted}
@@ -1093,15 +1106,13 @@ export default function OdbiorDetailDialog({
             const updatedJson = JSON.stringify(osoby);
             setLocalZ(prev => ({ ...prev, osoby: updatedJson }));
             onStatusChange(localZ.id, { osoby: updatedJson });
-            try {
-                await fetch(`/api/odbior/zgloszenie/${localZ.id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'update', osoby: updatedJson }),
-                });
-            } catch (e) {
+            fetch(`/api/odbior/zgloszenie/${localZ.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'update', osoby: updatedJson }),
+            }).catch((e) => {
                 console.error("Failed to update statusKrok", e);
-            }
+            });
         }
         setActivePersonIndex(null);
         window.dispatchEvent(new Event('candidates-updated'));
@@ -1262,6 +1273,7 @@ export default function OdbiorDetailDialog({
                             onEdit={handleEditDane}
                             canEdit={currentUser.isAdmin || currentUser.isRekrutacja || !!currentUser.isGuest}
                             canChangeStatus={!currentUser.isGuest}
+                            isAdmin={currentUser.isAdmin}
                         />
                     </TabsContent>
 

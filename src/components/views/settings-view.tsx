@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useMemo, useRef, ChangeEvent } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useForm, useFieldArray, useWatch, UseFieldArrayAppend, UseFieldArrayRemove, Control, FieldPath } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -29,6 +30,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { useLanguage } from '@/lib/i18n';
+import { useViewPersistence } from '@/hooks/use-view-persistence';
 
 const coordinatorSchema = z.object({
     uid: z.string(),
@@ -1668,10 +1670,23 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     const { toast } = useToast();
     const { t } = useLanguage();
     const { handleImportEmployees, handleImportNonEmployees, handleImportBokResidents, handleUpdateSettings, rawSettings } = useMainLayout();
+    
+    useViewPersistence('settings');
     const [isEmployeeImportLoading, setIsEmployeeImportLoading] = useState(false);
     const [isNonEmployeeImportLoading, setIsNonEmployeeImportLoading] = useState(false);
     const [isBokImportLoading, setIsBokImportLoading] = useState(false);
-    const [settingsSection, setSettingsSection] = useState<'organization' | 'import' | 'tools' | 'bulk'>('organization');
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
+    const validSections = ['organization', 'import', 'tools', 'bulk'] as const;
+    type SettingsSection = typeof validSections[number];
+    const sectionFromUrl = searchParams.get('settingsTab') as SettingsSection | null;
+    const settingsSection: SettingsSection = validSections.includes(sectionFromUrl as SettingsSection) ? (sectionFromUrl as SettingsSection) : 'organization';
+    const setSettingsSection = (v: SettingsSection) => {
+        const current = new URLSearchParams(Array.from(searchParams.entries()));
+        current.set('settingsTab', v);
+        router.replace(`${pathname}?${current.toString()}`, { scroll: false });
+    };
 
     const runEmployeeImport = async (fileContent: string) => {
         if (!rawSettings) {

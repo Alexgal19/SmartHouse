@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ControlCardsView from '@/components/views/control-cards-view';
 import { SessionData } from '@/types';
-import { uploadControlCardPhotoAction } from '@/lib/actions';
+import { uploadControlCardPhotoAction, saveControlCardAction } from '@/lib/actions';
 
 // Mock framer-motion to avoid animation issues in jsdom
 jest.mock('framer-motion', () => ({
@@ -19,7 +19,7 @@ jest.mock('framer-motion', () => ({
 const mockSettings = {
   addresses: [
     { id: 'addr1', name: 'Address 1', locality: 'Locality 1', coordinatorIds: ['uid1'], isActive: true, rooms: [] },
-    { id: 'addr2', name: 'Address 2', locality: 'Locality 2', coordinatorIds: ['uid1'], isActive: true, rooms: [] }
+    { id: 'addr2', name: 'Address 2', locality: 'Locality 1', coordinatorIds: ['uid1'], isActive: true, rooms: [] }
   ],
   coordinators: [],
   nationalities: [],
@@ -43,7 +43,6 @@ jest.mock('@/components/layouts/main-layout', () => ({
 // Mock server actions
 jest.mock('@/lib/actions', () => ({
   saveControlCardAction: jest.fn(),
-  editControlCardAction: jest.fn(),
   uploadControlCardPhotoAction: jest.fn(),
   saveStartListAction: jest.fn(),
   setAddressNoMetersRequiredAction: jest.fn(),
@@ -82,10 +81,38 @@ const completeStartList = {
   updatedById: 'uid1',
 };
 
-// Mock fetch — returns empty cards and a pre-filled Start-list for addr1
+const mockControlCards = [
+  {
+    id: 'card1',
+    addressId: 'addr1',
+    status: 'Oczekująca',
+    createdAt: '2026-04-10T10:00:00.000Z',
+    createdBy: 'uid1',
+    createdByName: 'Admin',
+    overallRating: 4,
+    notes: 'Test note',
+    isStartListDone: true,
+  },
+  {
+    id: 'card2',
+    addressId: 'addr2',
+    status: 'Oczekująca',
+    createdAt: '2026-04-11T10:00:00.000Z',
+    createdBy: 'uid2',
+    createdByName: 'User',
+    overallRating: 3,
+    notes: 'Another note',
+    isStartListDone: false,
+  }
+];
+
+// Mock fetch — returns mock cards and a pre-filled Start-list for addr1
 const mockFetch = jest.fn().mockImplementation((url: string) => {
   if (typeof url === 'string' && url.includes('/api/start-lists')) {
     return Promise.resolve({ json: () => Promise.resolve([completeStartList]) });
+  }
+  if (typeof url === 'string' && url.includes('/api/control-cards')) {
+    return Promise.resolve({ json: () => Promise.resolve(mockControlCards) });
   }
   return Promise.resolve({ json: () => Promise.resolve([]) });
 });
@@ -291,5 +318,74 @@ describe('ControlCardDialog - Meter Photo Upload', () => {
     fireEvent.click(screen.getByTitle('Usuń zdjęcie'));
 
     expect(screen.queryByAltText('Zdjęcie 1')).not.toBeInTheDocument();
+  });
+});
+
+// ─── Filtering and Editing Tests ─────────────────────────────────────────────
+
+describe('ControlCardsView - Filtering and Editing', () => {
+  const adminUser: SessionData = { uid: 'uid1', name: 'Admin', isAdmin: true, isLoggedIn: true, isDriver: false, isRekrutacja: false, isBok: false };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('filters addresses by search term', async () => {
+    render(<ControlCardsView currentUser={adminUser} />);
+    
+    // Both addresses should be visible initially
+    await waitFor(() => {
+      expect(screen.getByText('Address 1')).toBeInTheDocument();
+      expect(screen.getByText('Address 2')).toBeInTheDocument();
+    });
+
+    // Search for Address 1
+    const searchInput = screen.getByPlaceholderText('Szukaj adresu lub miejscowości...');
+    fireEvent.change(searchInput, { target: { value: 'Address 1' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Address 1')).toBeInTheDocument();
+      expect(screen.queryByText('Address 2')).not.toBeInTheDocument();
+    });
+  });
+
+  test('can open control card dialog for an address', async () => {
+    render(<ControlCardsView currentUser={adminUser} />);
+    
+    const addressButton = await screen.findByText('Address 1');
+    fireEvent.click(addressButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Zdjęcia liczników (prąd, woda, itp.)')).toBeInTheDocument();
+    });
+  });
+
+  test('can add control card note and save', async () => {
+    (saveControlCardAction as jest.Mock).mockResolvedValue({ success: true, id: 'new-card-1' });
+    
+    render(<ControlCardsView currentUser={adminUser} />);
+    
+    const addressButton = await screen.findByText('Address 1');
+    fireEvent.click(addressButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('+ Dodaj komentarz')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('+ Dodaj komentarz'));
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/Treść komentarza/i)).toBeInTheDocument();
+    });
+
+    const notesInput = screen.getByPlaceholderText(/Treść komentarza/i);
+    fireEvent.change(notesInput, { target: { value: 'Updated notes from test' } });
+
+    const saveButton = screen.getByText('Zapisz kontrolę');
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(saveControlCardAction).toHaveBeenCalled();
+    });
   });
 });

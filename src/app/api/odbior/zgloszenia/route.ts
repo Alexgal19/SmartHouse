@@ -7,13 +7,16 @@ export async function GET() {
     if (!session.isLoggedIn) {
         return NextResponse.json({ error: 'Nieautoryzowany dostęp.' }, { status: 401 });
     }
-    if (!session.isAdmin && !session.isDriver) {
+    if (!session.isAdmin && !session.isDriver && !session.isGuest) {
         return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
     }
 
     try {
         const zgloszenia = await getOdbiorZgloszenia();
-        const active = zgloszenia.filter(z => !z.deletedAt);
+        let active = zgloszenia.filter(z => !z.deletedAt);
+        if (session.isGuest) {
+            active = active.filter(z => z.rekruterId === session.uid);
+        }
         const sorted = [...active].sort((a, b) =>
             b.dataZgloszenia.localeCompare(a.dataZgloszenia)
         );

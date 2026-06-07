@@ -10,12 +10,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getCandidateDemandsAction, acknowledgeCandidateDemandAction, deliverCandidateDemandAction, deleteCandidateDemandAction } from "@/lib/actions";
 import { useMainLayout } from "@/components/layouts/main-layout";
+import { useViewPersistence } from "@/hooks/use-view-persistence";
 import { format } from "date-fns";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 export default function ZapotrzebowaniaView({ currentUser, activeView }: { currentUser: SessionData; activeView: string }) {
     const { t, dateLocale } = useLanguage();
     const { toast } = useToast();
+    
+    useViewPersistence('zapotrzebowania');
+
     const [demands, setDemands] = useState<CandidateDemand[]>([]);
     const [loading, setLoading] = useState(true);
     const [historyOpen, setHistoryOpen] = useState(false);
@@ -112,7 +116,7 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
     };
 
     const handleDeleteDemand = async (demandId: string) => {
-        if (!currentUser.isRekrutacja && !currentUser.isAdmin) return;
+        if (!currentUser.isAdmin) return;
         setDeletingId(demandId);
         
         const previousDemands = [...demands];
@@ -162,6 +166,60 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
         }
     };
 
+    const handleAcceptGroup = async (demandIds: string[]) => {
+        const previousDemands = [...demands];
+        setDemands(prev => prev.map(d =>
+            demandIds.includes(d.id)
+                ? { ...d, status: 'acknowledged', acknowledgedBy: currentUser.name, acknowledgedAt: new Date().toISOString() }
+                : d
+        ));
+
+        try {
+            const results = await Promise.all(demandIds.map(id => acknowledgeCandidateDemandAction(id, currentUser.name)));
+            const hasError = results.some(r => !r.success);
+            
+            if (hasError) {
+                setDemands(previousDemands);
+                toast({ variant: "destructive", title: t("common.error"), description: "Niektóre operacje się nie powiodły." });
+            } else {
+                toast({ title: t("common.success"), description: t("demand.accepted") });
+                window.dispatchEvent(new Event('demands-updated'));
+                loadData();
+            }
+        } catch (err) {
+            setDemands(previousDemands);
+            console.error(err);
+            toast({ variant: "destructive", title: t("common.error"), description: String(err) });
+        }
+    };
+
+    const handleDeliverGroup = async (demandIds: string[]) => {
+        const previousDemands = [...demands];
+        setDemands(prev => prev.map(d =>
+            demandIds.includes(d.id)
+                ? { ...d, status: 'delivered', acknowledgedBy: currentUser.name, acknowledgedAt: new Date().toISOString() }
+                : d
+        ));
+
+        try {
+            const results = await Promise.all(demandIds.map(id => deliverCandidateDemandAction(id, currentUser.name)));
+            const hasError = results.some(r => !r.success);
+
+            if (hasError) {
+                setDemands(previousDemands);
+                toast({ variant: "destructive", title: t("common.error"), description: "Niektóre operacje się nie powiodły." });
+            } else {
+                toast({ title: t("common.success"), description: t("demand.markedDelivered") });
+                window.dispatchEvent(new Event('demands-updated'));
+                loadData();
+            }
+        } catch (err) {
+            setDemands(previousDemands);
+            console.error(err);
+            toast({ variant: "destructive", title: t("common.error"), description: String(err) });
+        }
+    };
+
 
     const activeDemands = demands
         .filter(d => d.status === 'pending' || d.status === 'acknowledged')
@@ -170,6 +228,20 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
     const historyDemands = demands
         .filter(d => d.status === 'delivered' || d.status === 'expired')
         .sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime());
+
+    const groupedActiveDemands = useMemo(() => {
+        const groups = new Map<string, CandidateDemand[]>();
+        activeDemands.forEach(demand => {
+            const bok = bokLookupMap.get(demand.id);
+            let address = (demand.pickupAddress && demand.pickupAddress !== "Brak adresu") ? demand.pickupAddress : (bok?.address || "");
+            if (!address) address = "📍 Brak podanego adresu";
+            else if (!address.startsWith("📍")) address = `📍 ${address}`;
+            
+            if (!groups.has(address)) groups.set(address, []);
+            groups.get(address)!.push(demand);
+        });
+        return Array.from(groups.entries());
+    }, [activeDemands, bokLookupMap]);
 
     const statusBadge = (demand: CandidateDemand) => {
         if (demand.status === 'pending') return <Badge variant="secondary" className="text-sm px-3 py-1">{t('demand.statusPending')}</Badge>;
@@ -204,78 +276,90 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
                     </CardContent>
                 </Card>
             ) : (
-                <div className="grid grid-cols-1 gap-4">
-                    {activeDemands.map(demand => (
-                        <Card key={demand.id}>
-                            <CardContent className="pt-6">
-                                <div className="flex flex-col md:flex-row justify-between gap-4">
-                                    <div className="space-y-2">
-                                        <div className="font-semibold text-lg">
-                                            {demand.candidateFirstName} {demand.candidateLastName}
-                                        </div>
-                                        <div className="text-sm text-muted-foreground flex flex-col gap-1">
-                                            {(() => {
-                                                const bok = bokLookupMap.get(demand.id);
-                                                const address = (demand.pickupAddress && demand.pickupAddress !== "Brak adresu") ? demand.pickupAddress : (bok?.address || "");
-                                                const room = demand.roomNumber || bok?.roomNumber || "";
-                                                return (
-                                                    <>
-                                                        <div>
-                                                            <span className="font-medium text-foreground">{t('demand.pickupAddress')}:</span> {address || t('common.noData')}
-                                                        </div>
-                                                        {room && (
-                                                            <div>
-                                                                <span className="font-medium text-foreground">{t('demand.room')}:</span> {room}
-                                                            </div>
-                                                        )}
-                                                    </>
-                                                );
-                                            })()}
-                                            <div>
-                                                <span className="font-medium text-foreground">{t('demand.deliveryTime')}:</span> {demand.estimatedDeliveryTime || t('common.noData')}
-                                            </div>
-                                            <div>
-                                                <span className="font-medium text-foreground">{t('demand.hasLuggage')}:</span> {demand.hasLuggage ? t('demand.luggageYes') : t('demand.luggageNo')}
-                                            </div>
-                                            <div>
-                                                <span className="font-medium text-foreground">{t('demand.requestedBy')}:</span> {demand.requestedBy}
-                                            </div>
-                                            <div>
-                                                <span className="font-medium text-foreground">{t('demand.requestedAt')}:</span> {format(new Date(demand.requestedAt), 'dd.MM.yyyy HH:mm', { locale: dateLocale })}
-                                            </div>
-                                        </div>
-                                    </div>
+                <div className="grid grid-cols-1 gap-6">
+                    {groupedActiveDemands.map(([address, groupDemands]) => {
+                        const allPending = groupDemands.every(d => d.status === 'pending');
+                        const allAcknowledged = groupDemands.every(d => d.status === 'acknowledged');
+                        const canGroupAccept = allPending && (currentUser.isDriver || currentUser.isBok || currentUser.isAdmin);
+                        const canGroupDeliver = allAcknowledged && (currentUser.isDriver || currentUser.isAdmin);
 
-                                    <div className="flex flex-col items-end justify-between min-w-[200px] gap-4">
-                                        {statusBadge(demand)}
-
-                                        <div className="flex flex-col gap-2 w-full md:w-auto">
-                                            {demand.status === 'pending' && (currentUser.isDriver || currentUser.isBok || currentUser.isAdmin) && (
-                                                <Button onClick={() => handleAcceptDemand(demand.id)} className="w-full md:w-auto">
-                                                    {t('demand.accept')}
+                        return (
+                            <Card key={address} className="overflow-hidden border-2 border-primary/10">
+                                <div className="bg-muted/50 p-4 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                    <h3 className="font-semibold text-lg flex items-center gap-2">
+                                        {address}
+                                        <Badge variant="secondary" className="rounded-full">
+                                            {groupDemands.length} {groupDemands.length === 1 ? 'osoba' : (groupDemands.length < 5 ? 'osoby' : 'osób')}
+                                        </Badge>
+                                    </h3>
+                                    
+                                    {(canGroupAccept || canGroupDeliver) && groupDemands.length > 1 && (
+                                        <div className="flex w-full md:w-auto">
+                                            {canGroupAccept && (
+                                                <Button onClick={() => handleAcceptGroup(groupDemands.map(d => d.id))} className="w-full md:w-auto">
+                                                    Akceptuj wszystkie
                                                 </Button>
                                             )}
-                                            {demand.status === 'acknowledged' && (currentUser.isDriver || currentUser.isAdmin) && (
-                                                <Button variant="outline" onClick={() => handleDeliverDemand(demand.id)} className="w-full md:w-auto">
-                                                    {t('demand.markDelivered')}
-                                                </Button>
-                                            )}
-                                            {(currentUser.isRekrutacja || currentUser.isAdmin) && (
-                                                <Button
-                                                    variant="ghost"
-                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full md:w-auto"
-                                                    disabled={deletingId === demand.id}
-                                                    onClick={() => handleDeleteDemand(demand.id)}
-                                                >
-                                                    {deletingId === demand.id ? t("common.processing") : t("common.delete")}
+                                            {canGroupDeliver && (
+                                                <Button variant="outline" onClick={() => handleDeliverGroup(groupDemands.map(d => d.id))} className="w-full md:w-auto border-green-500 text-green-700 hover:bg-green-50">
+                                                    Dostarczone wszystkie
                                                 </Button>
                                             )}
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                <div className="divide-y">
+                                    {groupDemands.map(demand => {
+                                        const bok = bokLookupMap.get(demand.id);
+                                        const room = demand.roomNumber || bok?.roomNumber || "";
+                                        
+                                        return (
+                                            <div key={demand.id} className="p-4 flex flex-col md:flex-row justify-between gap-4 hover:bg-slate-50/50 transition-colors">
+                                                <div className="space-y-1">
+                                                    <div className="font-medium text-base flex items-center gap-2">
+                                                        {demand.candidateFirstName} {demand.candidateLastName}
+                                                        {demand.hasLuggage && <span title="Z bagażem">🧳</span>}
+                                                    </div>
+                                                    <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+                                                        {room && <span><span className="font-medium">Pokój:</span> {room}</span>}
+                                                        <span><span className="font-medium">Godz:</span> {demand.estimatedDeliveryTime || '—'}</span>
+                                                        <span><span className="font-medium">Dodane przez:</span> {demand.requestedBy}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col items-end gap-2 min-w-[140px]">
+                                                    {statusBadge(demand)}
+                                                    
+                                                    <div className="flex gap-2 w-full md:w-auto justify-end mt-1">
+                                                        {demand.status === 'pending' && (currentUser.isDriver || currentUser.isBok || currentUser.isAdmin) && (
+                                                            <Button size="sm" onClick={() => handleAcceptDemand(demand.id)}>
+                                                                {t('demand.accept')}
+                                                            </Button>
+                                                        )}
+                                                        {demand.status === 'acknowledged' && (currentUser.isDriver || currentUser.isAdmin) && (
+                                                            <Button size="sm" variant="outline" onClick={() => handleDeliverDemand(demand.id)}>
+                                                                {t('demand.markDelivered')}
+                                                            </Button>
+                                                        )}
+                                                        {currentUser.isAdmin && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="text-destructive hover:bg-destructive/10"
+                                                                disabled={deletingId === demand.id}
+                                                                onClick={() => handleDeleteDemand(demand.id)}
+                                                            >
+                                                                {deletingId === demand.id ? "..." : t("common.delete")}
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </Card>
+                        );
+                    })}
                 </div>
             )}
 

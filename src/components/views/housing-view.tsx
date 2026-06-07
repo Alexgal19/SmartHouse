@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { Employee, NonEmployee, SessionData, Room, Settings, BokResident } from '@/types';
+import { useViewPersistence } from '@/hooks/use-view-persistence';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Bed, Building, BarChart2, Copy, Lock } from 'lucide-react';
@@ -1039,6 +1040,8 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
   const [deepLinkedAddressId, setDeepLinkedAddressId] = useState<string | null>(null);
   const { t } = useLanguage();
   const deepLinkApplied = useRef(false);
+  
+  useViewPersistence('housing');
 
   const [filters, setFilters] = useState({
     name: '',
@@ -1224,7 +1227,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
               currentUser={currentUser}
             />
           </div>
-          <ScrollArea className="h-[calc(100vh-22rem)] -mx-4 px-4">
+          <ScrollArea id="scroll-area-housing" className="h-[calc(100vh-22rem)] -mx-4 px-4">
             {filters.locality !== 'all' ? (
               // Show addresses directly when specific locality is selected
               <Accordion
@@ -1308,7 +1311,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
               currentUser={currentUser}
             />
           </div>
-          <ScrollArea className="h-[calc(100vh-25rem)] lg:h-[calc(100vh-24rem)]">
+          <ScrollArea id="scroll-area-housing" className="h-[calc(100vh-25rem)] lg:h-[calc(100vh-24rem)]">
             {filters.locality !== 'all' ? (
               // Show addresses directly when specific locality is selected
               <div className="space-y-3">

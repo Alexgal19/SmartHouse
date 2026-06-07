@@ -2,10 +2,18 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { FilterControls } from '@/components/views/housing-view';
+import HousingView, { FilterControls } from '@/components/views/housing-view';
+import * as layoutModule from '@/components/layouts/main-layout';
 
 // Mock actions to avoid firebase-admin initialization in tests
 jest.mock('@/lib/actions', () => ({}));
+
+// Mock navigation
+jest.mock('next/navigation', () => ({
+    useSearchParams: () => new URLSearchParams(),
+    useRouter: () => ({ replace: jest.fn(), push: jest.fn() }),
+    usePathname: () => '/housing',
+}));
 
 // Mock UI components that might cause issues in JSDOM or are complex
 jest.mock('@/components/ui/select', () => ({
@@ -96,5 +104,64 @@ describe('FilterControls', () => {
         const select = screen.getByTestId('select-mock');
         fireEvent.change(select, { target: { value: 'Locality 1' } });
         expect(mockOnFilterChange).toHaveBeenCalledWith({ ...initialFilters, locality: 'Locality 1' });
+    });
+});
+
+describe('HousingView', () => {
+    const mockCurrentUser = { uid: 'coord1', isAdmin: true, name: 'Admin', isLoggedIn: true, role: 'admin' } as any;
+
+    beforeEach(() => {
+        jest.spyOn(layoutModule, 'useMainLayout').mockReturnValue({
+            settings: {
+                id: 'settings',
+                addresses: [
+                    { id: 'addr1', name: 'Address 1', locality: 'Locality 1', coordinatorIds: ['coord1'], isActive: true, rooms: [{ id: 'room1', number: '1', capacity: 2 }] },
+                    { id: 'addr2', name: 'Address 2', locality: 'Locality 2', coordinatorIds: ['coord1'], isActive: true, rooms: [{ id: 'room2', number: '2', capacity: 3 }] }
+                ],
+                localities: ['Locality 1', 'Locality 2'],
+                coordinators: [],
+                nationalities: [],
+                departments: [],
+                genders: [],
+                paymentTypesNZ: [],
+                statuses: [],
+                bokRoles: [],
+                bokReturnOptions: [],
+                bokStatuses: []
+            },
+            rawSettings: { addresses: [] },
+            allEmployees: [],
+            allNonEmployees: [],
+            allBokResidents: [],
+            selectedCoordinatorId: 'all',
+            currentUser: mockCurrentUser,
+            handleEditEmployeeClick: jest.fn(),
+            handleEditNonEmployeeClick: jest.fn(),
+            handleEditBokResidentClick: jest.fn(),
+            handleUpdateSettings: jest.fn(),
+        } as any);
+        
+    });
+
+    afterEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it('should render housing view and display addresses', () => {
+        render(<HousingView currentUser={mockCurrentUser} />);
+        expect(screen.getByText('Address 1')).toBeInTheDocument();
+        expect(screen.getByText('Address 2')).toBeInTheDocument();
+    });
+
+    it('should select an address and display details', () => {
+        render(<HousingView currentUser={mockCurrentUser} />);
+        
+        // Click on Address 1
+        fireEvent.click(screen.getByText('Address 1'));
+        
+        // Verify details are shown (we expect some specific detail text, e.g., 'Wydajność' or 'Wolne' or the address name in a header)
+        // Note: The right panel has an h3 with the address name when selected
+        const headers = screen.getAllByText('Address 1');
+        expect(headers.length).toBeGreaterThan(1); // One in list, one in detail view
     });
 });

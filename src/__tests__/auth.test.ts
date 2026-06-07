@@ -76,6 +76,7 @@ describe('Authentication', () => {
                 isDriver: false,
                 isRekrutacja: false,
                 isBok: false,
+                isGuest: false,
                 canEditPastControlCards: true,
             });
             expect(mockSession.save).toHaveBeenCalled();
@@ -108,6 +109,7 @@ describe('Authentication', () => {
                 isDriver: false,
                 isRekrutacja: false,
                 isBok: false,
+                isGuest: false,
                 canEditPastControlCards: false,
             });
             expect(mockSession.save).toHaveBeenCalled();

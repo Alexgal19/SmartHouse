@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { loginAsAdmin } from './helpers/login';
 import * as XLSX from 'xlsx';
 
 // Helper function to create a mock Excel file in memory
@@ -12,17 +13,7 @@ function createMockExcel(data: Record<string, unknown>[]): Buffer {
 test.describe('Excel Import', () => {
   // Log in before each test
   test.beforeEach(async ({ page }) => {
-    const username = 'admin';
-    const password = 'SWhouse$21';
-
-    await page.goto('/login');
-    await page.fill('#name', username);
-    await page.fill('#password', password);
-    await page.locator('button[type="submit"]').click();
-    await page.waitForURL('/dashboard?view=dashboard');
-    
-    // Navigate to settings view
-    await page.goto('/dashboard?view=settings');
+    await loginAsAdmin(page, '/dashboard?view=settings');
   });
 
   test('should import employees from an Excel file', async ({ page }) => {

@@ -73,7 +73,7 @@ jobs:
 
   summary:
     name: Playwright Summary
-    needs: test
+    needs: [discover, test]
     runs-on: ubuntu-latest
     if: always()
     steps:

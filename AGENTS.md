@@ -464,6 +464,7 @@ Dopisz wpis do `LESSONS_LEARNED.md` w formacie:
    - `LESSONS_LEARNED.md` — czytaj tylko TL;DR na starcie. Pełne sekcje tylko gdy zadanie dotyka danego obszaru.
    - `AI_CONTEXT.md` — używaj **na żądanie** (gdy pytasz o strukturę projektu lub zależności), nie automatycznie na starcie sesji. Plik może być nieaktualny — weryfikuj narzędziami (`grep`, `ls`).
 12. **Zawsze pytaj o commit i push** — Po zakończeniu implementacji zadania, każdy agent pracujący nad tym projektem ma bezwzględny obowiązek zapytać użytkownika "Czy chcesz żebym zrobił git commit i git push?". **NIGDY nie wykonuj tych operacji automatycznie, nawet jeśli użytkownik pozwolił na to w poprzednich zadaniach.** Nigdy nie kończ zadania bez ustaleń dotyczących repozytorium.
+13. **Otwieranie aplikacji** — Gdy użytkownik prosi o otwarcie aplikacji (np. "otwórz apkę"), zawsze używaj polecenia terminala (np. `open http://localhost:3000` na macOS), aby uruchomić ją bezpośrednio w domyślnej przeglądarce użytkownika. **Nigdy** nie używaj narzędzi działających w tle (takich jak `browser_subagent`) do samego wczytywania i przeglądania aplikacji, chyba że otrzymasz inne, wyraźne polecenie.
 
 ---
 

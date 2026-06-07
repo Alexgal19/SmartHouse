@@ -5,6 +5,7 @@ const nextConfig = {
         serverActions: {
             bodySizeLimit: '30mb',
         },
+        scrollRestoration: true,
     },
     eslint: {
         // Warning: This allows production builds to successfully complete even if

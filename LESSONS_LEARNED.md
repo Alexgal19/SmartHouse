@@ -5,10 +5,10 @@
 
 ---
 
-## ⚡ TL;DR — Czytaj to. Pełne sekcje tylko gdy zadanie dotyka danego obszaru.
+## ⚡ TL;DR — Czytaj to (pełne sekcje tylko gdy zadanie dotyka danego obszaru)
 
 | # | Obszar | Kluczowa zasada |
-|---|--------|----------------|
+| --- | --- | --- |
 | 1 | React / UI | `useEffect` synchronizujący stan lokalny ↔ URL + debounce = konflikt. Użyj `committedRef` do odróżnienia własnych zmian od zewnętrznych. |
 | 2 | Filtry kolumn | Wartość opcji filtra musi być **identyczna** z wartością pola — nie transformuj dla wyświetlania bez transformacji w logice. |
 | 3 | Struktura projektu | Pliki **muszą** być pod `src/`. Root-level `lib/` i `components/` są usuniętym legacy — nie twórz tam nowych plików. |
@@ -27,9 +27,10 @@
 | 16 | React / UI | Znikające stany po re-renderach w formularzach – używaj stałych referencji (np. `useMemo`) zamiast przekazywać obiekty `{...}` bezpośrednio do propów. |
 | 17 | Bazy Danych / Formularze | Nie udawaj rekordu do Edycji z przypisanym sztucznym ID w celu utworzenia nowego – użyj `prefillData`, unikniesz błędu "nie istnieje". |
 | 18 | React / Hooks | Ślepe dodawanie funkcji resetujących (np. `makeDefault`) do `useEffect deps` by uciszyć linter = form reset loop. Zawsze używaj `useCallback` lub wynieś funkcję. |
+| 19 | AI Agents / QA | **KRYTYCZNE:** Zanim zaproponujesz `git commit` nowej funkcji, **MUSISZ** napisać i uruchomić test E2E/integracyjny. Nie pytaj o commit bez testu! |
+| 20 | Dokumentacja / MD | Pliki markdown (.md) muszą mieć puste linie wokół nagłówków, list i kodów (unikaj MD022/MD031/MD032) oraz max 1 pustą linię z rzędu (MD012). |
 
-
-### [React / UI] Znikające stany w formularzach (Oszukiwanie referencji)
+### React / UI — Znikające stany w formularzach (Oszukiwanie referencji)
 
 **Symptom:** Wartości wpisywane w formularzach (np. OdbiorZakwaterowanieDialog) gubiły się/resetowały natychmiast po wyborze pola Combobox lub jakimkolwiek re-renderze nadrzędnego widoku.
 **Root cause:** Komponent rodzica przekazywał w in-line dynamicznie generowany obiekt `editEntry={{ id: ... }}`. Każdy re-render rodzica produkował nową referencję. Dziecko używało `useEffect` reagującego na zmianę tego propa, więc po zmianie referencji - natychmiastowo nadpisywało i czyściło cały stan wizarda.
@@ -39,7 +40,7 @@
 
 ---
 
-### [Bazy Danych / Formularze] Błąd zapisu "Rekord nie istnieje" w logice Dialogów
+### Bazy Danych / Formularze — Błąd zapisu "Rekord nie istnieje" w logice Dialogów
 
 **Symptom:** Użytkownik próbował dokończyć i zapisać nową osobę do zakwaterowania, jednak po kliknięciu zapisu na końcu wizarda otrzymał błąd "OdbiorEntry z ID X nie istnieje".
 **Root cause:** Rodzic podał fałszywy rekord z wygenerowanym ID jako parametr "editEntry" w celu wypełnienia pól danymi kandydata. Formularz sztywno sprawdzał `const isEditing = !!editEntry;` i automatycznie wymuszał wywołanie operacji Bazy Danych w trybie "UPDATE" podając owo sztuczne ID.
@@ -49,26 +50,32 @@
 
 ---
 
-### [React / Hooks] Ślepe dodawanie funkcji do tablicy zależności (Form reset loop)
+### React / Hooks — Ślepe dodawanie funkcji do tablicy zależności (Form reset loop)
 
 **Symptom:** Użytkownik wpisuje tekst w formularzu, ale po naciśnięciu dowolnego klawisza formularz wraca do stanu początkowego (resetuje się) i traci focus.
+
 **Root cause:** Linter ESLint zgłasza `warning: exhaustive-deps` o brakującej funkcji pomocniczej (np. `makeDefault`, `getInitialState`) w tablicy zależności `useEffect`. Deweloper lub Agent AI "naprawia" ostrzeżenie lintera, ślepo dodając tę funkcję do tablicy. Ponieważ funkcja jest definiowana inline i nie jest owinięta w `useCallback`, zmienia swoją referencję przy każdym renderze. To powoduje, że `useEffect` odpala się po każdej zmianie stanu (każdym wpisanym znaku) i bezwarunkowo nadpisuje stan pustymi, domyślnymi danymi.
+
 **Rozwiązanie:** Zamiast ślepo wrzucać funkcje do `[deps]`, aby uciszyć linter:
+
 1. Owiń funkcję w `useCallback(..., [])` (lub z wymaganymi zależnościami),
 2. Lub przenieś funkcję całkowicie poza ciało komponentu (najlepsze rozwiązanie, gdy funkcja nie używa propsów i lokalnego stanu),
-3. Lub wyłącz regułę lokalnie `// eslint-disable-next-line react-hooks/exhaustive-deps` (mniej preferowane).
+3. Or wyłącz regułę lokalnie `// eslint-disable-next-line react-hooks/exhaustive-deps` (mniej preferowane).
+
 **Obszar ryzyka:** Wszystkie efekty typu `useEffect(() => { setData(makeDefault()); }, [isOpen])`, gdzie funkcja generująca dane jest zdefiniowana wewnątrz komponentu.
+
 **Pliki:** Wszystkie formularze i wizardy.
 
 ---
 
-### [UI / Dane] Filtrowanie kandydatów po dwóch ścieżkach danych – sourceOdbiorId i name matching
+### UI / Dane — Filtrowanie kandydatów po dwóch ścieżkach danych – sourceOdbiorId i name matching
 
 **Symptom:** Osoba z BOK o statusie "Zwolnieni" (dismissed) nadal wyświetlała się w tabeli "Dodaj kandydata" w widoku rekrutacji.
 
 **Root cause:** Filtr w `filteredCandidates` sprawdzał tylko kandydatów z `sourceOdbiorId` — jeśli kandydat był powiązany przez odbiór → BOK i BOK miał status `dismissed`, był ukrywany. Kandydaci utworzeni bezpośrednio z BOK (`handleBokDemand`) nie mają `sourceOdbiorId`, więc przechodzili przez filtr. Brakowało fallbacku przez dopasowanie imienia i nazwiska.
 
 **Rozwiązanie:** Dodano drugą ścieżkę filtrowania: zestaw `dismissedBokNames` (imię+nazwisko zwolnionych mieszkańców BOK). Każdy kandydat jest sprawdzany dwutorowo:
+
 1. Jeśli ma `sourceOdbiorId` → sprawdź czy jest w `dismissedSourceIds`
 2. Niezależnie od `sourceOdbiorId` → sprawdź czy `imię+nazwisko` pasuje do `dismissedBokNames`
 
@@ -429,10 +436,30 @@ const handlePointerDown = (e: React.PointerEvent) => {
 
 ---
 
-### [React / UI] Nadpisywanie optymistycznego stanu przez stale cache z innej instancji Server Action
+### React / UI — Nadpisywanie optymistycznego stanu przez stale cache z innej instancji Server Action
 
 **Symptom:** Po użyciu akcji "Zwolnij pracownika" osoba znikała z listy (dzięki optymistycznemu update), pojawiała się z powrotem po kilku sekundach (UI migotało), a po odświeżeniu strony znowu znikała.
 **Root cause:** Architektura Next.js 14 Server Actions + izolacja pamięci workerów. `updateEmployee` zmieniało stan w bazie i czyściło in-memory `employeesCache` w workerze A. Wywoływane od razu potem `refreshData` wywoływało `getEmployees()`, co trafiało do workera B, który wciąż miał *stale cache* przez 60 sekund. W rezultacie serwer zwracał stary status "active", a `mergeWithOptimistic` całkowicie nadpisywał nim poprawny, optymistyczny status "dismissed" z React State.
-**Rozwiązanie:** W funkcji `mergeWithOptimistic` dodano specjalny przypadek uodparniający Reacta na ten stale cache race-condition dla zwolnień (bo są to akcje jednokierunkowe). Jeśli lokalny UI wymusił status `dismissed`, a serwer nagle zwraca stary status `active` dla tego samego pracownika, funkcja łączenia zachowuje `dismissed`. 
+**Rozwiązanie:** W funkcji `mergeWithOptimistic` dodano specjalny przypadek uodparniający Reacta na ten stale cache race-condition dla zwolnień (bo są to akcje jednokierunkowe). Jeśli lokalny UI wymusił status `dismissed`, a serwer nagle zwraca stary status `active` dla tego samego pracownika, funkcja łączenia zachowuje `dismissed`.
 **Obszar ryzyka:** Optymistyczne UI w Server Actions korzystających z in-memory module caching (np. `employeesCache` ze zdefiniowanym TTL) bez centralnego redisa / Next.js Data Cache.
 **Pliki:** `src/lib/merge-optimistic.ts`
+
+---
+
+### AI Agents / QA — Zapominanie o testach przed commitem
+
+**Symptom:** Agent (Orchestrator) zakończył pisanie kodu nowej funkcjonalności i od razu zapytał użytkownika "Czy mogę zrobić git commit i git push?", pomijając napisanie i uruchomienie testów (np. Playwright).
+**Root cause:** LLM skupia się na "rozwiązaniu problemu" i po udanej edycji plików uznaje cel za osiągnięty, ignorując regułę #5 z `AGENTS.md` o obowiązkowych testach (QA Agent).
+**Rozwiązanie:** Zanim Agent AI zaproponuje wykonanie commita, MA BEZWZGLĘDNY OBOWIĄZEK sprawdzić, czy napisał/zmodyfikował odpowiednie testy (E2E/Jednostkowe) dla nowej funkcji. Jeśli funkcja działa, pierwszą rzeczą przed commitem jest dodanie scenariusza testowego (np. do `*.spec.ts`) i zweryfikowanie go (np. `npx playwright test`).
+**Obszar ryzyka:** Zakończenie każdego zadania wprowadzającego nowe funkcje, interfejsy lub modyfikującego przepływ użytkownika.
+**Pliki:** `AGENTS.md`, `tests/*.spec.ts`
+
+---
+
+### Dokumentacja / Markdown — Ostrzeżenia i błędy formatowania markdownlint w plikach planów/podsumowań
+
+**Symptom:** W edytorze użytkownika wyświetlają się ostrzeżenia typu `MD032/blanks-around-lists`, `MD022/blanks-around-headings`, `MD012/no-multiple-blanks` dla generowanych plików `implementation_plan.md` i `walkthrough.md`.
+**Root cause:** AI agenci generowali bloki list, kodu lub cytatów bezpośrednio po nagłówkach lub bez odpowiednich odstępów (pustych linii) wymaganych przez reguły markdownlint, a także zostawiali podwójne puste wiersze.
+**Rozwiązanie:** Zawsze otaczaj bloki list (`-`, `*`), bloki kodu (` ``` `), cytaty/alerty (`>`) oraz nagłówki (`#`, `##`, `###`) pustymi liniami przed i po nich. Unikaj wielokrotnych kolejnych pustych linii (dozwolona max 1 pusta linia z rzędu).
+**Obszar ryzyka:** Wszystkie automatycznie tworzone i modyfikowane pliki Markdown (`.md`), w szczególności `implementation_plan.md`, `walkthrough.md` oraz `task.md`.
+**Pliki:** `implementation_plan.md`, `walkthrough.md`, `task.md`

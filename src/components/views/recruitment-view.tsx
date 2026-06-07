@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getCandidatesAction, sendCandidateDemandNotificationAction, getCandidateDemandsAction, deleteCandidateAction, acknowledgeCandidateDemandAction, addCandidateAction, updateCandidateAction } from "@/lib/actions";
+import { useViewPersistence } from "@/hooks/use-view-persistence";
+import { getCandidatesAction, sendCandidateDemandNotificationAction, getCandidateDemandsAction, cancelCandidateDemandAction, deleteCandidateAction, acknowledgeCandidateDemandAction, addCandidateAction, updateCandidateAction } from "@/lib/actions";
 import { useMainLayout } from "@/components/layouts/main-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Eye, MoreHorizontal, MapPin, CheckCircle2, Truck } from 'lucide-react';
+import { Eye, MoreHorizontal, MapPin, CheckCircle2, Truck, Plus } from 'lucide-react';
 import AddCandidateDialog from '@/components/dialogs/add-candidate-dialog';
 import { BokStatsDrillDownDialog } from '@/components/dialogs/bok-stats-drill-down-dialog';
 import {
@@ -41,13 +42,15 @@ import {
 } from "@/components/ui/dialog";
 import { OdbiorZakwaterowanieDialog } from '@/components/dialogs/odbior-zakwaterowanie-dialog';
 
-const PASSPORT_HASH_QUICK = 'b8dc2c143be8994682b08461f46487e05874e59dd9ab65cf973e3a3c67a763aa';
-const PASSPORT_HASH_FULL  = '52409f1bf23162b6ceff30dd11275fc9ee01897d7afca9cd09e95f05ef41d7e9';
-
-async function hashInput(input: string): Promise<string> {
-    const data = new TextEncoder().encode(input);
-    const buf  = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+async function verifyPassport(input: string, type: 'quick' | 'full'): Promise<boolean> {
+    const res = await fetch('/api/verify-passport', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input, type }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json() as { valid: boolean };
+    return data.valid;
 }
 
 export default function RecruitmentView({ currentUser, activeView }: { currentUser: SessionData; activeView: string }) {
@@ -90,6 +93,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
 
     const searchParams = useSearchParams();
     const router = useRouter();
+    useViewPersistence('recruitment');
     const demandIdParam = searchParams.get('demandId');
 
     const clearDemandParam = useCallback(() => {
@@ -197,6 +201,26 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         } catch (err) {
             console.error(err);
             toast({ variant: "destructive", title: t("candidate.demandError"), description: String(err) });
+        } finally {
+            setSendingId(null);
+        }
+    };
+
+    const handleCancelDemand = async (demandId: string) => {
+        if (!confirm(t("candidate.cancelDemandBtn") + "?")) return;
+        setSendingId(demandId);
+        try {
+            const result = await cancelCandidateDemandAction(demandId, currentUser.uid);
+            if (result.success) {
+                toast({ title: t("common.success"), description: t("candidate.cancelDemandBtn") });
+                window.dispatchEvent(new Event('candidates-updated'));
+                window.dispatchEvent(new Event('demands-updated'));
+            } else {
+                toast({ variant: "destructive", title: t("common.error"), description: result.error || "" });
+            }
+        } catch (err) {
+            console.error(err);
+            toast({ variant: "destructive", title: t("common.error"), description: String(err) });
         } finally {
             setSendingId(null);
         }
@@ -376,7 +400,12 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 if (statusFilter === 'oczekujace') return ['nowy', 'wdrodze', 'w_biurze'].includes(c.status);
                 return true;
             })
-            .filter(c => c.lastName.toLowerCase().includes(searchQuery.toLowerCase()));
+            .filter(c => c.lastName.toLowerCase().includes(searchQuery.toLowerCase()))
+            .sort((a, b) => {
+                const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return dateB - dateA;
+            });
     }, [preFilteredCandidates, searchQuery, statusFilter]);
 
     // O(1) demand lookup
@@ -570,6 +599,15 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
+                    {!currentUser.isDriver && (
+                        <Button 
+                            onClick={() => setAddCandidateOpen(true)}
+                            className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
+                            <Plus className="h-4 w-4 mr-2" />
+                            {t("candidate.title")}
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -686,7 +724,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                             <CardTitle>{t("candidate.tableTitle")}</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
-                            <ScrollArea className="h-[60vh]">
+                            <ScrollArea id="scroll-area-recruitment" className="h-[60vh]">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -705,7 +743,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                             return (
                                                 <TableRow
                                                     key={c.id}
-                                                    className={`cursor-pointer transition-colors ${rowBgClass(c.status)} ${!['po_rozmowie', 'zakwaterowana', 'zakwaterowana_oczekuje_na_rozmowe', 'dismissed'].includes(c.status) ? 'animate-blink-light-red' : ''}`}
+                                                    className={`cursor-pointer transition-colors ${rowBgClass(c.status)} ${!['po_rozmowie', 'zakwaterowana', 'dismissed'].includes(c.status) ? 'animate-blink-light-red' : ''}`}
                                                     onClick={() => handleRowClick(c)}
                                                 >
                                                     <TableCell className="font-medium">{c.lastName}</TableCell>
@@ -750,6 +788,11 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                                         {t("candidate.demandBtn")}
                                                                     </DropdownMenuItem>
                                                                 )}
+                                                                {c.status === 'wdrodze' && demand && demand.status === 'pending' && (
+                                                                    <DropdownMenuItem onClick={() => handleCancelDemand(demand.id)} className="text-orange-600 focus:text-orange-600 focus:bg-orange-100">
+                                                                        {t("candidate.cancelDemandBtn")}
+                                                                    </DropdownMenuItem>
+                                                                )}
                                                                 <DropdownMenuItem onClick={() => handleFinishCandidate(c)}>
                                                                     {t("candidate.finishBtn")}
                                                                 </DropdownMenuItem>
@@ -788,7 +831,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                         c.status === 'zakwaterowana_oczekuje_na_rozmowe'? 'border-l-green-400 bg-green-50/50 dark:bg-green-950/20' :
                                         c.status === 'po_rozmowie'  ? 'border-l-green-500 bg-green-50/50 dark:bg-green-950/20' :
                                         'border-l-transparent'
-                                    } ${!['po_rozmowie', 'zakwaterowana', 'zakwaterowana_oczekuje_na_rozmowe', 'dismissed'].includes(c.status) ? 'animate-blink-light-red' : ''}`}
+                                    } ${!['po_rozmowie', 'zakwaterowana', 'dismissed'].includes(c.status) ? 'animate-blink-light-red' : ''}`}
                                     onClick={() => handleRowClick(c)}
                                 >
                                     <CardContent className="p-4 space-y-3">
@@ -843,6 +886,11 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                     {(c.status === 'zakwaterowana' || c.status === 'zakwaterowana_oczekuje_na_rozmowe') && (
                                                         <DropdownMenuItem onClick={() => handleCandidateDemand(c)}>
                                                             {t("candidate.demandBtn")}
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {c.status === 'wdrodze' && demand && demand.status === 'pending' && (
+                                                        <DropdownMenuItem onClick={() => handleCancelDemand(demand.id)} className="text-orange-600 focus:text-orange-600 focus:bg-orange-100">
+                                                            {t("candidate.cancelDemandBtn")}
                                                         </DropdownMenuItem>
                                                     )}
                                                     <DropdownMenuItem onClick={() => handleFinishCandidate(c)}>
@@ -951,7 +999,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                     />
                                     {/* Desktop table */}
                                     <div className="hidden sm:block">
-                                        <ScrollArea className="h-[40vh]">
+                                        <ScrollArea id="scroll-area-recruitment" className="h-[40vh]">
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
@@ -1233,8 +1281,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                         onChange={(e) => setPassportInput(e.target.value)}
                         onKeyDown={async (e) => {
                             if (e.key === 'Enter') {
-                                const h = await hashInput(passportInput);
-                                if (h === PASSPORT_HASH_QUICK) {
+                                const valid = await verifyPassport(passportInput, 'quick');
+                                if (valid) {
                                     setBokPassportVisible(true);
                                     setPassportDialogOpen(false);
                                     setPassportInput('');
@@ -1250,8 +1298,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                             {t('common.cancel')}
                         </AlertDialogCancel>
                         <Button onClick={async () => {
-                            const h = await hashInput(passportInput);
-                            if (h === PASSPORT_HASH_FULL) {
+                            const valid = await verifyPassport(passportInput, 'full');
+                            if (valid) {
                                 setBokPassportVisible(true);
                                 setPassportDialogOpen(false);
                                 setPassportInput("");

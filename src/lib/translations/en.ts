@@ -417,6 +417,9 @@ export const en = {
     'form.paymentType': 'Payment type',
     'form.locality': 'Locality',
     'form.selectLocality': 'Select locality',
+    'form.selectAccommodation': 'Select accommodation',
+    'form.selectLocalityToSeeAvailability': 'Select a locality to see address availability',
+    'form.addressPreviewDialogTitle': 'Preview and select available spots',
 
     // Toast messages
     'toast.dataRefreshed': 'Data has been refreshed.',
@@ -1052,6 +1055,7 @@ export const en = {
     'candidate.dateAdded': 'Date added',
     'candidate.searchBySurname': 'Search by surname...',
     'candidate.demandBtn': 'Candidate demand',
+    'candidate.cancelDemandBtn': 'Cancel demand',
     'candidate.demandSent': 'Demand sent',
     'candidate.demandSentDesc': 'Notified {count} coordinators.',
     'candidate.demandError': 'Failed to send notifications.',

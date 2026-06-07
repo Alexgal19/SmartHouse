@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { isRoomActive, isOwnAddressEntry } from '@/lib/address-filters';
+import { useLanguage } from '@/lib/i18n';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { FilterableHeader } from '@/components/ui/filterable-header';
 
@@ -53,6 +54,7 @@ export function AddressPreviewDialog({
   onApplySelection,
 }: AddressPreviewDialogProps) {
 
+  const { t } = useLanguage();
   const [selectedLocality, setSelectedLocality] = useState<string>('');
   const [selectedAddress, setSelectedAddress] = useState<string>('');
   const [selectedRoom, setSelectedRoom] = useState<string>('');
@@ -279,9 +281,9 @@ export function AddressPreviewDialog({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent data-testid="address-preview-dialog" className="max-w-[96vw] sm:max-w-3xl lg:max-w-5xl max-h-[92vh] p-3 sm:p-6 gap-3 sm:gap-4">
         <DialogHeader>
-          <DialogTitle className="text-base sm:text-lg">Podgląd i wybór dostępności miejsc</DialogTitle>
+          <DialogTitle className="text-base sm:text-lg">{t('form.addressPreviewDialogTitle')}</DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">
-            Wybierz miejscowość, aby zobaczyć dostępność adresów
+            {t('form.selectLocalityToSeeAvailability')}
           </DialogDescription>
         </DialogHeader>
 
@@ -289,9 +291,9 @@ export function AddressPreviewDialog({
           <div className="pr-3 space-y-4 sm:space-y-6">
             {/* Interactive Selection Section */}
             <div className="p-3 sm:p-4 border rounded-lg bg-muted/50">
-              <h3 className="text-sm font-semibold mb-3 sm:mb-4">Wybierz zakwaterowanie</h3>
+              <h3 className="text-sm font-semibold mb-3 sm:mb-4">{t('form.selectAccommodation')}</h3>
               <div className="space-y-2 max-w-xs">
-                <Label htmlFor="locality-select">Miejscowość</Label>
+                <Label htmlFor="locality-select">{t('form.locality')}</Label>
                 <Select value={selectedLocality} onValueChange={(value) => {
                   setSelectedLocality(value);
                   setSelectedAddress('');
@@ -299,7 +301,7 @@ export function AddressPreviewDialog({
                   setExpandedAddress(null);
                 }}>
                   <SelectTrigger id="locality-select">
-                    <SelectValue placeholder="Wybierz miejscowość" />
+                    <SelectValue placeholder={t('form.selectLocality')} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ALL_LOCALITIES}>Wszystkie miejscowości</SelectItem>

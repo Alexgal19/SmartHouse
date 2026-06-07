@@ -27,6 +27,7 @@ export type Coordinator = {
   isDriver?: boolean;
   isRekrutacja?: boolean;
   isBok?: boolean;
+  isGuest?: boolean;
   canEditPastControlCards?: boolean;
   departments: string[];
   password?: string;
@@ -191,6 +192,7 @@ export type SessionData = {
   isDriver: boolean;
   isRekrutacja: boolean;
   isBok: boolean;
+  isGuest?: boolean;
   canEditPastControlCards?: boolean;
 }
 
@@ -366,6 +368,7 @@ export type CandidateDemand = {
   pickupAddress?: string;
   roomNumber?: string;
   hasLuggage?: boolean;
+  originalCandidateStatus?: Candidate['status'] | string;
 }
 
 export type OdbiorEntry = {

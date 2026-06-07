@@ -22,12 +22,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { cn } from '@/lib/utils';
 
 import { FilterableHeader } from '@/components/ui/filterable-header';
+import { useViewPersistence } from '@/hooks/use-view-persistence';
 import { BokStatsDrillDownDialog } from '@/components/dialogs/bok-stats-drill-down-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const ITEMS_PER_PAGE = 20;
 
-const formatDate = (dateString?: string | null) => {
+export const formatDate = (dateString?: string | null) => {
     if (!dateString) return 'N/A';
     try {
         if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
@@ -54,8 +55,8 @@ type Entity = Employee | NonEmployee | BokResident;
 type SortableField = 'lastName' | 'firstName' | 'coordinatorId' | 'address' | 'roomNumber' | 'checkInDate' | 'checkOutDate' | 'coordinatorName' | 'department' | 'sendDate' | 'zaklad' | 'returnStatus' | 'status' | 'comments' | 'passportNumber' | 'hasPermit' | 'hasPesel';
 
 
-const isBokResident = (entity: Entity): entity is BokResident => !('coordinatorId' in entity);
-const isEmployee = (entity: Entity): entity is Employee => ('coordinatorId' in entity) && ('zaklad' in entity);
+export const isBokResident = (entity: Entity): entity is BokResident => !('coordinatorId' in entity);
+export const isEmployee = (entity: Entity): entity is Employee => ('coordinatorId' in entity) && ('zaklad' in entity);
 
 const EntityActions = React.memo(({
     entity,
@@ -311,7 +312,7 @@ const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, on
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
     return (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {entities.length > 0 ? (
                 entities.map((entity, index) => {
                     const isPending = isBokResident(entity) && bokPendingIds?.has(entity.id);
@@ -361,7 +362,7 @@ const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, on
 const HistoryCardList = ({ history, onDelete }: { history: AddressHistory[]; onDelete?: (id: string) => void; }) => {
     const { t } = useLanguage();
     return (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {history.length > 0 ? (
                 history.map((entry, index) => (
                     <Card
@@ -550,6 +551,8 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    
+    useViewPersistence('employees');
     const [isPending, startTransition] = useTransition();
     const { isMobile, isMounted } = useIsMobile();
     const showBokTab = currentUser.isAdmin || currentUser.isBok;
@@ -951,7 +954,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
     const renderContent = (data: Entity[], isBokTab: boolean = false, isDismissed: boolean = false, customTotalPages?: number) => (
         <>
-            <ScrollArea className="h-[55vh] overflow-x-auto">
+            <ScrollArea id="scroll-area-employees" className="h-[55vh] overflow-x-auto">
                 {isMounted ?
                     (viewMode === 'list' ?
                         <EntityTable
@@ -989,7 +992,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
     const renderHistoryContent = () => (
         <>
-            <ScrollArea className="h-[55vh] overflow-x-auto">
+            <ScrollArea id="scroll-area-employees" className="h-[55vh] overflow-x-auto">
                 {isMounted ? (
                     isMobile ? (
                         <HistoryCardList

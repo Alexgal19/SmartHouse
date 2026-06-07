@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import OdbiorView from '@/components/views/odbior-view';
@@ -15,8 +16,15 @@ global.URL.revokeObjectURL = jest.fn();
 
 jest.mock('@/components/dialogs/odbior-detail-dialog', () => ({
   __esModule: true,
-  default: ({ open, zgloszenie }: { open: boolean; zgloszenie?: { id?: string } }) =>
-    open ? <div data-testid="detail-dialog">{zgloszenie?.id}</div> : null,
+  default: ({ open, zgloszenie, onStatusChange }: any) =>
+    open ? (
+      <div 
+        data-testid="detail-dialog" 
+        onClick={() => onStatusChange?.(zgloszenie?.id, { status: 'Zakończone' })}
+      >
+        {zgloszenie?.id}
+      </div>
+    ) : null,
 }));
 
 describe('OdbiorView', () => {
@@ -58,11 +66,27 @@ describe('OdbiorView', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    global.fetch = jest.fn((url) => {
+    global.fetch = jest.fn((url: string | URL | Request, init?: RequestInit) => {
       if (url === '/api/odbior/zgloszenia') {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(mockZgloszenia),
+        });
+      }
+      if (url.toString().includes('/api/odbior/zgloszenie') && init?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            success: true,
+            zgloszenie: {
+              id: 'new-id',
+              status: 'Oczekujące na realizację',
+              dataZgloszenia: new Date().toISOString(),
+              skad: 'autobusowa',
+              iloscOsob: 3,
+              rekruterNazwa: 'Nowy Rekruter'
+            }
+          })
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -176,6 +200,67 @@ describe('OdbiorView', () => {
         expect.objectContaining({ method: 'DELETE' })
       );
       expect(screen.queryByText('Stacja autobusowa')).not.toBeInTheDocument();
+    });
+  });
+
+  it('submits the new submission form successfully', async () => {
+    render(<OdbiorView currentUser={mockUser} />);
+    fireEvent.click(screen.getByText('Zgłoś odbiór'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Stacja autobusowa')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/Numer telefonu/i), { target: { value: '123456789' } });
+    fireEvent.change(screen.getByLabelText(/Nazwisko i imię rekrutera/i), { target: { value: 'Nowy Rekruter' } });
+    fireEvent.click(screen.getByLabelText('Stacja autobusowa'));
+
+    const submitBtn = screen.getAllByRole('button', { name: 'Zgłoś odbiór' }).find(b => b.getAttribute('type') === 'submit');
+    fireEvent.click(submitBtn!);
+
+    await waitFor(() => {
+      const calls = (global.fetch as jest.Mock).mock.calls;
+      console.log('Fetch calls:', calls);
+      expect(global.fetch).toHaveBeenCalledWith('/api/odbior/zgloszenie', expect.objectContaining({ method: 'POST' }));
+    });
+  });
+
+  it('filters submissions by search term', async () => {
+    render(<OdbiorView currentUser={mockUser} />);
+    await screen.findAllByText('Stacja autobusowa');
+
+    const searchInput = screen.getByPlaceholderText(/Szukaj/i);
+    fireEvent.change(searchInput, { target: { value: 'NieistniejacyRekruter' } });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Stacja autobusowa')).not.toBeInTheDocument();
+    });
+
+    fireEvent.change(searchInput, { target: { value: 'Test User' } });
+    await waitFor(() => {
+      expect(screen.getAllByText('Stacja autobusowa').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('handles status changes from detail dialog', async () => {
+    render(<OdbiorView currentUser={mockUser} />);
+    await screen.findAllByText('Stacja autobusowa');
+
+    // Open detail dialog
+    const eyeButton = screen.getAllByRole('button', { name: /Szczegóły/i })[0];
+    fireEvent.click(eyeButton);
+
+    const detailDialog = await screen.findByTestId('detail-dialog');
+    
+    // Trigger status change via mock onClick
+    fireEvent.click(detailDialog);
+
+    // Verify stats updated (since it was W trakcie and changed to Zakończone, the dostarczone stat should be 1 and w trakcie 0)
+    await waitFor(() => {
+      // 1 should be the dostarczone stats (success card) and 0 w trakcie (amber card)
+      // W trakcie initially is 1, after change it should be 0
+      const wTrakcieCards = screen.getAllByText('0');
+      expect(wTrakcieCards.length).toBeGreaterThan(0);
     });
   });
 });

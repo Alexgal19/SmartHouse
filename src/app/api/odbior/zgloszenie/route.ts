@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     if (!session.isLoggedIn) {
         return NextResponse.json({ error: 'Nieautoryzowany dostęp.' }, { status: 401 });
     }
-    if (!session.isAdmin && !session.isDriver) {
+    if (!session.isAdmin && !session.isDriver && !session.isGuest) {
         return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
     }
 

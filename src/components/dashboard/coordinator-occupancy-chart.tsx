@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useMemo } from 'react';
-import type { Employee, NonEmployee } from "@/types";
+
 import { useMainLayout } from '@/components/layouts/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip, Cell } from "recharts";
@@ -55,7 +55,7 @@ const KpiCard = ({ title, value, icon, description }: { title: string; value: st
 );
 
 export function CoordinatorOccupancyChart() {
-    const { allEmployees, allNonEmployees, settings, selectedCoordinatorId } = useMainLayout();
+    const { allEmployees, allNonEmployees, allBokResidents, settings, selectedCoordinatorId } = useMainLayout();
 
     const chartData = useMemo(() => {
         if (!settings || !allEmployees || !allNonEmployees || selectedCoordinatorId === 'all') {
@@ -70,9 +70,10 @@ export function CoordinatorOccupancyChart() {
         // Include ONLY active addresses. Blocked addresses are completely excluded from stats.
         const coordinatorAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId) && a.isActive);
 
-        const allActiveOccupants: (Employee | NonEmployee)[] = [
+        const allActiveOccupants = [
             ...allEmployees.filter(e => e.status === 'active'),
-            ...allNonEmployees.filter(ne => ne.status === 'active')
+            ...allNonEmployees.filter(ne => ne.status === 'active'),
+            ...(allBokResidents || []).filter(r => r.status === 'active')
         ];
 
         const occupancyByAddress: OccupancyData[] = coordinatorAddresses.map(address => {
@@ -107,7 +108,7 @@ export function CoordinatorOccupancyChart() {
 
         return { data: occupancyByAddress, coordinatorName: coordinator.name, totals };
 
-    }, [allEmployees, allNonEmployees, settings, selectedCoordinatorId]);
+    }, [allEmployees, allNonEmployees, allBokResidents, settings, selectedCoordinatorId]);
 
     if (!chartData.coordinatorName || chartData.data.length === 0) {
         return null;

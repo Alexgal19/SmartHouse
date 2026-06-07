@@ -1,27 +1,16 @@
 import { test, expect, Page } from '@playwright/test';
-
-// Helper: log in and navigate to dashboard
-async function loginAndGo(page: Page, path = '/dashboard?view=dashboard') {
-  await page.goto('/login');
-  await page.fill('#name', 'admin');
-  await page.fill('#password', 'SWhouse$21');
-  await page.locator('button[type="submit"]').click();
-  await page.waitForURL('/dashboard?view=dashboard');
-  if (path !== '/dashboard?view=dashboard') {
-    await page.goto(path);
-  }
-}
+import { loginAsAdmin } from './helpers/login';
 
 // Helper: open dialog via "Podgląd miejsc" on dashboard
 async function openDialogFromDashboard(page: Page) {
-  await loginAndGo(page);
+  await loginAsAdmin(page);
   await page.getByRole('button', { name: 'Podgląd miejsc', exact: true }).click();
   await expect(page.getByTestId('address-preview-dialog')).toBeVisible({ timeout: 10000 });
 }
 
 test.describe('AddressPreviewDialog — otwieranie i zamykanie', () => {
   test('otwiera się po kliknięciu "Podgląd miejsc" na dashboardzie', async ({ page }) => {
-    await loginAndGo(page);
+    await loginAsAdmin(page);
     await page.getByRole('button', { name: 'Podgląd miejsc', exact: true }).click();
 
     const dialog = page.getByTestId('address-preview-dialog');
@@ -274,7 +263,7 @@ test.describe('AddressPreviewDialog — brak danych', () => {
 
 test.describe('AddressPreviewDialog — otwieranie z formularza pracownika', () => {
   test('otwiera się przyciskiem podglądu w formularzu dodawania pracownika', async ({ page }) => {
-    await loginAndGo(page, '/dashboard?view=dashboard');
+    await loginAsAdmin(page);
 
     // Open add employee dialog from quick actions
     await page.getByRole('button', { name: 'Dodaj pracownika', exact: true }).click();

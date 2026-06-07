@@ -1,2 +1,5 @@
 check_sheet.js
 src/lib/__tests__/health.test.ts
+scratch/**
+*.ts.bak
+*.js.bak

@@ -1,18 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-
-const ADMIN_NAME = 'admin';
-const ADMIN_PASS = 'SWhouse$21';
-
-async function loginAsAdmin(page: Page) {
-    await page.goto('/login');
-    await page.waitForLoadState('domcontentloaded');
-    if (page.url().includes('dashboard')) return;
-    await page.locator('#name').fill(ADMIN_NAME);
-    await page.locator('#password').fill(ADMIN_PASS);
-    await page.locator('button[type="submit"]').click();
-    await page.waitForURL('**/dashboard**', { timeout: 30000 });
-    await page.waitForTimeout(3000);
-}
+import { loginAsAdmin } from './helpers/login';
 
 async function gotoView(page: Page, view: string) {
     await page.goto(`/dashboard?view=${view}`);
@@ -21,6 +8,23 @@ async function gotoView(page: Page, view: string) {
 }
 
 test.describe.serial('Odbiór — Przepływ E2E', () => {
+
+    test('Tworzenie zgłoszenia - Walidacja formularza', async ({ page }) => {
+        await loginAsAdmin(page);
+        await gotoView(page, 'odbior');
+
+        // Click "Zgłoś odbiór" CTA
+        await page.getByRole('button', { name: /Zgłoś odbiór|Nowe zgłoszenie/ }).first().click();
+
+        // Submit empty form
+        await page.locator('[role="dialog"] form button[type="submit"]').click();
+
+        // Verify HTML5 validation or custom toast (here we expect form not to close)
+        await expect(page.getByRole('heading', { name: /Zgłoś odbiór|Nowe zgłoszenie/ })).toBeVisible();
+        
+        // Close dialog
+        await page.locator('[role="dialog"] button[aria-label="Close"], [role="dialog"] button.absolute.right-4').first().click({ force: true });
+    });
 
     test('Tworzenie nowego zgłoszenia odbioru', async ({ page }) => {
         await loginAsAdmin(page);
@@ -111,6 +115,36 @@ test.describe.serial('Odbiór — Przepływ E2E', () => {
             await nieprzyjeteBtn.first().click();
             await page.waitForTimeout(1000);
             await expect(page.locator('select')).toHaveValue('Nieprzyjęte');
+        }
+    });
+
+    test('Usuwanie zgłoszenia odbioru', async ({ page }) => {
+        await loginAsAdmin(page);
+        await gotoView(page, 'odbior');
+
+        // Create a temporary submission for deletion
+        await page.getByRole('button', { name: /Zgłoś odbiór|Nowe zgłoszenie/ }).first().click();
+        await page.fill('input[placeholder="+48 000 000 000"]', '111222333');
+        await page.locator('#auto, [value="autobusowa"]').first().click();
+        await page.fill('textarea[placeholder="Dodatkowe informacje..."]', 'To be deleted');
+        await page.locator('[role="dialog"] form button[type="submit"]').click();
+        await expect(page.getByRole('heading', { name: /Zgłoś odbiór|Nowe zgłoszenie/ })).not.toBeVisible({ timeout: 20000 });
+
+        // Find the newly created row and click delete (trash icon)
+        const row = page.locator('table tbody tr').filter({ hasText: '111222333' }).first();
+        await expect(row).toBeVisible({ timeout: 10000 });
+        
+        const deleteBtn = row.locator('button.text-red-500, button[aria-label*="Usuń"], button:has(.lucide-trash2)').first();
+        if (await deleteBtn.isVisible().catch(() => false)) {
+            await deleteBtn.click();
+            
+            // Confirm deletion in AlertDialog
+            const confirmBtn = page.getByRole('button', { name: /Usuń|Potwierdź|Tak/ }).first();
+            await expect(confirmBtn).toBeVisible({ timeout: 5000 });
+            await confirmBtn.click();
+
+            // Verify it disappeared
+            await expect(row).not.toBeVisible({ timeout: 15000 });
         }
     });
 });

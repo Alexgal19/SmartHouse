@@ -34,6 +34,9 @@ const DEFAULT_CONFIG: Record<string, LimitConfig> = {
   // Data guard — bulk operations
   "/api/data-guard": { windowMs: 60_000, maxRequests: 10 },
   "/api/data-guard/run": { windowMs: 60_000, maxRequests: 3 },
+
+  // AI Assistant — moderate limit to prevent quota exhaustion
+  "/api/assistant": { windowMs: 60_000, maxRequests: 10 },
 };
 
 /** Simple sliding-window entry. */

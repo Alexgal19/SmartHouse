@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { useLanguage } from '@/lib/i18n';
 import { Users, User, CalendarOff } from "lucide-react";
 import type { Employee, NonEmployee } from "@/types";
@@ -64,12 +64,28 @@ export function DashboardKPIs({
     const { t } = useLanguage();
     const { settings } = useMainLayout();
 
-    const EXCLUDED_DEPARTMENTS = ['BOK', 'Odbiór', 'Rekrutacja'];
-
     const stats = useMemo(() => {
-        const activeEmployees = employees.filter(e => 
-            e.status === 'active' && !EXCLUDED_DEPARTMENTS.includes(e.zaklad || '')
+        const EXCLUDED_DEPARTMENTS = ['BOK', 'Odbiór', 'Rekrutacja'];
+
+        const bokCoordinatorIds = new Set(
+            settings?.coordinators
+                .filter(c => c.isBok || c.departments?.includes('BOK'))
+                .map(c => c.uid) || []
         );
+
+        const bokAddresses = new Set(
+            settings?.addresses
+                .filter(a => a.coordinatorIds.some(id => bokCoordinatorIds.has(id)))
+                .map(a => a.name) || []
+        );
+
+        const activeEmployees = employees.filter(e => {
+            if (e.status !== 'active') return false;
+            if (EXCLUDED_DEPARTMENTS.includes(e.zaklad || '')) return false;
+            if (bokCoordinatorIds.has(e.coordinatorId)) return false;
+            if (bokAddresses.has(e.address || '')) return false;
+            return true;
+        });
         const activeNonEmployees = nonEmployees.filter(ne => ne.status === 'active');
         const allActiveOccupants = [...activeEmployees, ...activeNonEmployees];
         const upcomingCheckoutsList = allActiveOccupants.filter(o => {

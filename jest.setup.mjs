@@ -170,6 +170,13 @@ jest.mock('react-webcam', () => {
   return { __esModule: true, default: Webcam };
 });
 
+// Global fetch mock — jsdom does not provide fetch; tests that need specific
+// responses should override via jest.spyOn(global, 'fetch') per test.
+global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ valid: true }),
+});
+
 // Mock scrollIntoView for JSDOM
 if (typeof window !== 'undefined') {
   window.HTMLElement.prototype.scrollIntoView = jest.fn();

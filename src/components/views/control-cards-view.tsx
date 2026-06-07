@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useViewPersistence } from '@/hooks/use-view-persistence';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1805,7 +1806,7 @@ function RankingChart({ cards }: { cards: ControlCard[] }) {
                                             : <span className="text-xs text-muted-foreground font-medium">{idx + 1}</span>
                                         }
                                     </div>
-                                    <span className="w-36 md:w-48 truncate text-xs text-foreground shrink-0" title={card.addressName}>
+                                    <span className="w-36 md:w-48 truncate text-xs text-gray-900 shrink-0" title={card.addressName}>
                                         {card.addressName}
                                     </span>
                                     <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden">
@@ -1848,8 +1849,8 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
     const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
     const [openLocality, setOpenLocality] = useState<string | null>(null);
     const [isUnlocked, setIsUnlocked] = useState(true);
-
-
+    
+    useViewPersistence('control_cards');
     const loadControlCards = React.useCallback(() => {
         if (!isUnlocked) return;
         setIsLoadingCards(true);

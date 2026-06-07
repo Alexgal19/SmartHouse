@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { Candidate, SessionData } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -67,9 +67,9 @@ export default function OsobaDoZakwaterowaniaView({ currentUser }: OsobaDoZakwat
         return (allCandidates || []).filter(c => {
             // Show only candidates explicitly assigned for housing via outcome buttons
             const isDoZakwaterowania = c.interviewOutcome === 'do_zakwaterowania' &&
-                (c.status === 'w_oczekiwaniu_na_zakwaterowanie' || ((c.status === 'zakwaterowana' || c.status === 'zakwaterowana_oczekuje_na_rozmowe') && !c.bokId));
+                ['w_oczekiwaniu_na_zakwaterowanie', 'zakwaterowana', 'zakwaterowana_oczekuje_na_rozmowe'].includes(c.status);
             const isEmployedDoZakwaterowania = c.interviewOutcome === 'employed' &&
-                (c.status === 'w_oczekiwaniu_na_zakwaterowanie' || ((c.status === 'zakwaterowana' || c.status === 'zakwaterowana_oczekuje_na_rozmowe') && !c.bokId));
+                ['w_oczekiwaniu_na_zakwaterowanie', 'zakwaterowana', 'zakwaterowana_oczekuje_na_rozmowe'].includes(c.status);
             return isDoZakwaterowania || isEmployedDoZakwaterowania;
         }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [allCandidates]);
@@ -79,16 +79,9 @@ export default function OsobaDoZakwaterowaniaView({ currentUser }: OsobaDoZakwat
         setIsZakwaterowanieOpen(true);
     };
 
-    // Close the dialog if the candidate disappears from the list (status was changed via dialog)
-    useEffect(() => {
-        if (selectedCandidate && isZakwaterowanieOpen) {
-            const stillExists = doZakwaterowania.find(c => c.id === selectedCandidate.id);
-            if (!stillExists) {
-                setIsZakwaterowanieOpen(false);
-                setSelectedCandidate(null);
-            }
-        }
-    }, [doZakwaterowania, selectedCandidate, isZakwaterowanieOpen]);
+    // The dialog state is managed explicitly by user actions (like saving or closing).
+    // We no longer forcefully close it if the candidate disappears from the background list,
+    // which prevents the bug where the dialog fails to open after clicking "Akceptuję".
 
     return (
         <div className="space-y-4">
@@ -110,7 +103,7 @@ export default function OsobaDoZakwaterowaniaView({ currentUser }: OsobaDoZakwat
                                             candidate.interviewOutcome === 'employed'
                                                 ? 'border-green-500/50 shadow-green-500/10'
                                                 : 'border-red-500/50 shadow-red-500/10 bg-red-500/10'
-                                        }`}
+                                        } ${candidate.status === 'zakwaterowana_oczekuje_na_rozmowe' ? 'animate-blink-light-red' : ''}`}
                                     >
                                         <div className="flex justify-between items-center gap-4">
                                             <div className="min-w-0">

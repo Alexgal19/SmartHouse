@@ -11,7 +11,7 @@ import type { View, Notification, Employee, Settings, Address, SessionData, NonE
 import { Home, Settings as SettingsIcon, Users, Building, ClipboardCheck, Truck, Briefcase, ClipboardList } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 import { mergeWithOptimistic, trackDeletedEntityId, trackEditedEntityId } from '@/lib/merge-optimistic';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     addEmployee,
     addNonEmployee,
@@ -163,24 +163,31 @@ export default function MainLayout({
         { view: 'housing', icon: Building, label: t('nav.housing') },
         { view: 'control-cards', icon: ClipboardCheck, label: t('nav.controlCards') },
         { view: 'recruitment', icon: Briefcase, label: t('nav.recruitment') },
-        (initialSession.isBok || initialSession.isDriver || initialSession.isAdmin) ? { view: 'osoba-do-zakwaterowania', icon: Building, label: 'Osoba do zakwaterowania' } : null,
+        (initialSession.isBok || initialSession.isDriver || initialSession.isAdmin) && !initialSession.isGuest ? { view: 'osoba-do-zakwaterowania', icon: Building, label: 'Osoba do zakwaterowania' } : null,
         { view: 'settings', icon: SettingsIcon, label: t('nav.settings') },
-    ].filter(Boolean), [t, initialSession.isBok, initialSession.isDriver, initialSession.isAdmin]) as { view: View; icon: React.ElementType; label: string }[];
+    ].filter(Boolean), [t, initialSession.isBok, initialSession.isDriver, initialSession.isAdmin, initialSession.isGuest]) as { view: View; icon: React.ElementType; label: string }[];
 
     const activeView = useMemo(() => {
         let view = searchParams.get('view') as View;
+        if (initialSession.isGuest) {
+            if (view !== 'odbior') {
+                view = 'odbior';
+            }
+            return view || 'odbior';
+        }
         if (view === 'odbior' && !(initialSession.isDriver || initialSession.isAdmin)) {
             view = 'dashboard';
         }
         if (view) return view;
         if (initialSession.isDriver) return 'odbior';
         return 'dashboard';
-    }, [searchParams, initialSession.isDriver, initialSession.isAdmin]);
+    }, [searchParams, initialSession.isDriver, initialSession.isAdmin, initialSession.isGuest]);
 
     const editEntityId = searchParams.get('edit');
 
     const [currentUser] = useState<SessionData | null>(initialSession);
     const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
+    const [deletedNotificationIds, setDeletedNotificationIds] = useState<string[]>([]);
 
     const [rawEmployees, setRawEmployees] = useState<Employee[] | null>(null);
     const [rawNonEmployees, setRawNonEmployees] = useState<NonEmployee[] | null>(null);
@@ -197,19 +204,47 @@ export default function MainLayout({
     const [unacceptedCount, setUnacceptedCount] = useState(0);
     const wdrodzeCount = useMemo(() => {
         if (!rawCandidates) return 0;
-        // Licznik pokazuje kandydatów aktywnych w procesie:
-        // w drodze do biura, w biurze, lub zakwaterowanych oczekujących na rozmowę.
-        return rawCandidates.filter(c => ['wdrodze', 'w_biurze', 'zakwaterowana_oczekuje_na_rozmowe'].includes(c.status)).length;
-    }, [rawCandidates]);
+        
+        const dismissedBokIds = new Set(
+            (rawBokResidents || [])
+                .filter(r => r.status === 'dismissed')
+                .map(r => r.id)
+        );
+        const dismissedSourceIds = new Set(
+            (odbiorEntries || [])
+                .filter(e => e.convertedToBokId && dismissedBokIds.has(e.convertedToBokId))
+                .map(e => e.id)
+        );
+        const dismissedBokNames = new Set(
+            (rawBokResidents || [])
+                .filter(r => r.status === 'dismissed')
+                .map(r => `${r.firstName.trim().toLowerCase()}|${r.lastName.trim().toLowerCase()}`)
+        );
+
+        return rawCandidates.filter(c => {
+            // Check dismissal filter
+            if (c.bokId && dismissedBokIds.has(c.bokId)) return false;
+            if (c.sourceOdbiorId && dismissedSourceIds.has(c.sourceOdbiorId)) return false;
+            if (c.status !== 'nowy' && c.status !== 'wdrodze') {
+                const nameKey = `${c.firstName.trim().toLowerCase()}|${c.lastName.trim().toLowerCase()}`;
+                if (dismissedBokNames.has(nameKey)) return false;
+            }
+
+            // Explicitly exclude "Zakwaterowana-Zatrudniona" and those who are already employed
+            if (c.status === 'zakwaterowana' || c.interviewOutcome === 'employed') return false;
+            
+            return ['wdrodze', 'w_biurze', 'zakwaterowana_oczekuje_na_rozmowe'].includes(c.status);
+        }).length;
+    }, [rawCandidates, rawBokResidents, odbiorEntries]);
     const [pendingDemandsCount, setPendingDemandsCount] = useState(0);
 
     const osobaDoZakwaterowaniaCount = useMemo(() => {
         if (!rawCandidates) return 0;
         return rawCandidates.filter(c => {
             const isDoZakwaterowania = c.interviewOutcome === 'do_zakwaterowania' &&
-                (c.status === 'w_oczekiwaniu_na_zakwaterowanie' || ((c.status === 'zakwaterowana' || c.status === 'zakwaterowana_oczekuje_na_rozmowe') && !c.bokId));
+                ['w_oczekiwaniu_na_zakwaterowanie', 'zakwaterowana', 'zakwaterowana_oczekuje_na_rozmowe'].includes(c.status);
             const isEmployedDoZakwaterowania = c.interviewOutcome === 'employed' &&
-                (c.status === 'w_oczekiwaniu_na_zakwaterowanie' || ((c.status === 'zakwaterowana' || c.status === 'zakwaterowana_oczekuje_na_rozmowe') && !c.bokId));
+                ['w_oczekiwaniu_na_zakwaterowanie', 'zakwaterowana', 'zakwaterowana_oczekuje_na_rozmowe'].includes(c.status);
             return isDoZakwaterowania || isEmployedDoZakwaterowania;
         }).length;
     }, [rawCandidates]);
@@ -296,6 +331,9 @@ export default function MainLayout({
         if (currentUser?.isAdmin) {
             return navItems;
         }
+        if (currentUser?.isGuest) {
+            return navItems.filter(item => item.view === 'odbior');
+        }
         if (currentUser?.isDriver) {
             return navItems.filter(item => item.view === 'odbior' || item.view === 'zapotrzebowania' || item.view === 'employees' || item.view === 'housing' || item.view === 'control-cards');
         }
@@ -340,23 +378,30 @@ export default function MainLayout({
             toast({ variant: "destructive", title: t('common.permError'), description: t('toast.adminOnly') });
             return;
         }
+        const originalNotifications = allNotifications;
+        const allIds = allNotifications.map(n => n.id);
+        setDeletedNotificationIds(prev => [...prev, ...allIds]);
+        setAllNotifications([]);
         try {
             await clearAllNotifications();
-            setAllNotifications([]);
             toast({ title: t('common.success'), description: t('toast.notifsCleaned') });
         } catch (e) {
+            setDeletedNotificationIds(prev => prev.filter(id => !allIds.includes(id)));
+            setAllNotifications(originalNotifications);
             toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.notifDeleteError') });
         }
-    }, [currentUser, toast, t]);
+    }, [currentUser, allNotifications, toast, t]);
 
     const handleDeleteNotification = useCallback(async (notificationId: string) => {
         const originalNotifications = allNotifications;
+        setDeletedNotificationIds(prev => [...prev, notificationId]);
         setAllNotifications(prev => prev.filter(n => n.id !== notificationId));
 
         try {
             await deleteNotification(notificationId);
             toast({ title: t('common.success'), description: t('toast.notifDeleted') });
         } catch (e: unknown) {
+            setDeletedNotificationIds(prev => prev.filter(id => id !== notificationId));
             setAllNotifications(originalNotifications);
             toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.notifDeleteError') });
         }
@@ -407,7 +452,7 @@ export default function MainLayout({
                 return entry;
             });
 
-            setAllNotifications(notifications);
+            setAllNotifications(notifications.filter(n => !deletedNotificationIds.includes(n.id)));
             setRawNonEmployees((prev) => mergeWithOptimistic(prev, nonEmployees));
             setRawBokResidents((prev) => mergeWithOptimistic(prev, bokResidents));
             setRawEmployees((prev) => mergeWithOptimistic(prev, employees));
@@ -459,17 +504,17 @@ export default function MainLayout({
                 description: `${t('toast.dataLoadErrorDesc')} ${error instanceof Error ? error.message : ''}`,
             });
         }
-    }, [currentUser, toast, t]);
+    }, [currentUser, toast, t, deletedNotificationIds]);
 
     const refreshNotificationsOnly = useCallback(async () => {
         if (!currentUser) return;
         try {
             const notifications = await getNotifications(currentUser.uid, currentUser.isAdmin);
-            setAllNotifications(notifications);
+            setAllNotifications(notifications.filter(n => !deletedNotificationIds.includes(n.id)));
         } catch (e) {
             console.error("Failed to refresh notifications:", e);
         }
-    }, [currentUser]);
+    }, [currentUser, deletedNotificationIds]);
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         try {

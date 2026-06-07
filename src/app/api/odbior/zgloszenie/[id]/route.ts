@@ -11,7 +11,11 @@ export async function DELETE(
     if (!session.isLoggedIn) {
         return NextResponse.json({ error: 'Nieautoryzowany dostęp.' }, { status: 401 });
     }
-    if (!session.isAdmin && !session.isDriver) {
+    if (!session.isAdmin && !session.isDriver && !session.isGuest) {
+        return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
+    }
+    // Guests cannot delete
+    if (session.isGuest) {
         return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
     }
     // allow admin or non-driver (recruiter); pure drivers cannot delete
@@ -44,7 +48,7 @@ export async function PATCH(
     if (!session.isLoggedIn) {
         return NextResponse.json({ error: 'Nieautoryzowany dostęp.' }, { status: 401 });
     }
-    if (!session.isAdmin && !session.isDriver) {
+    if (!session.isAdmin && !session.isDriver && !session.isGuest) {
         return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
     }
 
@@ -70,22 +74,40 @@ export async function PATCH(
         const zgloszenia = await getOdbiorZgloszenia();
         const existing = zgloszenia.find(z => z.id === id);
 
+        if (!existing) {
+            return NextResponse.json({ error: 'Nie znaleziono zgłoszenia.' }, { status: 404 });
+        }
+
+        // Guests can only update their own submissions
+        if (session.isGuest && existing.rekruterId !== session.uid) {
+            return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
+        }
+
         const updates: Record<string, string> = {};
         const changeLogEntries: Array<{ timestamp: string; userId: string; userName: string; changes: string }> = [];
         const nowIso = new Date().toISOString();
 
         if (body.action === 'przyjmij') {
+            if (session.isGuest) {
+                return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
+            }
             updates.status = 'W trakcie';
             updates.kierowcaId = session.uid ?? '';
             updates.kierowcaNazwa = session.name ?? '';
             updates.przyjeteAt = format(new Date(), 'yyyy-MM-dd HH:mm');
             changeLogEntries.push({ timestamp: nowIso, userId: session.uid ?? '', userName: session.name ?? '', changes: 'Przyjęto zgłoszenie' });
         } else if (body.action === 'odrzuc') {
+            if (session.isGuest) {
+                return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
+            }
             updates.status = 'Nieprzyjęte';
             updates.kierowcaId = '';
             updates.kierowcaNazwa = '';
             changeLogEntries.push({ timestamp: nowIso, userId: session.uid ?? '', userName: session.name ?? '', changes: 'Odrzucono zgłoszenie' });
         } else if (body.action === 'zakoncz') {
+            if (session.isGuest) {
+                return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
+            }
             updates.status = 'Zakończone';
             updates.dataZakonczenia = format(new Date(), 'yyyy-MM-dd HH:mm');
             updates.zakonczoneAt = format(new Date(), 'yyyy-MM-dd HH:mm');

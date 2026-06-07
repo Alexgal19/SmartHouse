@@ -1,19 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { loginAsAdmin } from './helpers/login';
 
 test.describe('Housing View', () => {
   // Log in before each test
   test.beforeEach(async ({ page }) => {
-    const username = 'admin';
-    const password = 'SWhouse$21';
-
-    await page.goto('/login');
-    await page.fill('#name', username);
-    await page.fill('#password', password);
-    await page.locator('button[type="submit"]').click();
-    await page.waitForURL('/dashboard?view=dashboard');
-    
-    // Navigate to housing view
-    await page.goto('/dashboard?view=housing');
+    await loginAsAdmin(page, '/dashboard?view=housing');
   });
 
   test('should filter addresses by name, locality, and availability', async ({ page }) => {

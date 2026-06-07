@@ -1,16 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { loginAsAdmin } from './helpers/login';
 
 test.describe('Dashboard', () => {
   // Log in before each test
   test.beforeEach(async ({ page }) => {
-    const username = 'admin';
-    const password = 'SWhouse$21';
-
-    await page.goto('/login');
-    await page.fill('#name', username);
-    await page.fill('#password', password);
-    await page.locator('button[type="submit"]').click();
-    await page.waitForURL('/dashboard?view=dashboard');
+    await loginAsAdmin(page);
   });
 
   test('should display the dashboard with KPI cards and quick actions', async ({ page }) => {

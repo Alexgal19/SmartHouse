@@ -27,6 +27,7 @@ export default async function DashboardLayout({
     isDriver: session.isDriver || false,
     isRekrutacja: session.isRekrutacja || false,
     isBok: session.isBok || false,
+    isGuest: session.isGuest || false,
     canEditPastControlCards: session.canEditPastControlCards || false,
   };
 

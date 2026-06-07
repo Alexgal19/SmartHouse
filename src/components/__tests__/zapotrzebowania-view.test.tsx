@@ -75,6 +75,7 @@ const makeDemand = (overrides: Partial<CandidateDemand> = {}): CandidateDemand =
 describe('ZapotrzebowaniaView', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    window.confirm = jest.fn(() => true);
   });
 
   it('shows loading skeleton initially', () => {
@@ -201,11 +202,11 @@ describe('ZapotrzebowaniaView', () => {
     });
   });
 
-  it('shows "Usuń" button for rekrutacja', async () => {
+  it('hides "Usuń" button for rekrutacja', async () => {
     mockGetDemands.mockResolvedValue([makeDemand()]);
     render(<ZapotrzebowaniaView currentUser={mockRekrutacja} activeView="zapotrzebowania" />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Usuń/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Usuń/i })).not.toBeInTheDocument();
     });
   });
 
@@ -220,13 +221,13 @@ describe('ZapotrzebowaniaView', () => {
   it('clicking "Usuń" calls deleteCandidateDemandAction', async () => {
     mockGetDemands.mockResolvedValue([makeDemand()]);
     mockDeleteDemand.mockResolvedValue({ success: true });
-    render(<ZapotrzebowaniaView currentUser={mockRekrutacja} activeView="zapotrzebowania" />);
+    render(<ZapotrzebowaniaView currentUser={mockAdmin} activeView="zapotrzebowania" />);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Usuń/i })).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole('button', { name: /Usuń/i }));
     await waitFor(() => {
-      expect(mockDeleteDemand).toHaveBeenCalledWith('dem-1', 'user-3');
+      expect(mockDeleteDemand).toHaveBeenCalledWith('dem-1', 'user-1');
     });
   });
 
@@ -252,8 +253,7 @@ describe('ZapotrzebowaniaView', () => {
     mockGetDemands.mockResolvedValue([makeDemand({ hasLuggage: true })]);
     render(<ZapotrzebowaniaView currentUser={mockAdmin} activeView="zapotrzebowania" />);
     await waitFor(() => {
-      expect(screen.getByText(/Z bagażem\?/)).toBeInTheDocument();
-      expect(screen.getByText(/Tak/)).toBeInTheDocument();
+      expect(screen.getByTitle('Z bagażem')).toBeInTheDocument();
     });
   });
 
@@ -261,8 +261,7 @@ describe('ZapotrzebowaniaView', () => {
     mockGetDemands.mockResolvedValue([makeDemand({ hasLuggage: false })]);
     render(<ZapotrzebowaniaView currentUser={mockAdmin} activeView="zapotrzebowania" />);
     await waitFor(() => {
-      expect(screen.getByText(/Z bagażem\?/)).toBeInTheDocument();
-      expect(screen.getByText(/Nie/)).toBeInTheDocument();
+      expect(screen.queryByTitle('Z bagażem')).not.toBeInTheDocument();
     });
   });
 

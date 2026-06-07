@@ -401,7 +401,95 @@ describe('Server Actions', () => {
         });
     });
 
+    describe('Admin notifications on dismissal', () => {
+        const settingsWithAdmin: Settings = {
+            ...mockSettings,
+            coordinators: [
+                { uid: 'coord-1', name: 'Jan Kowalski', isAdmin: false, departments: ['IT'] },
+                { uid: 'coord-admin', name: 'Admin User', isAdmin: true, departments: [] },
+            ],
+        };
 
+        beforeEach(() => {
+            mockedGetSettings.mockResolvedValue(settingsWithAdmin);
+        });
+
+        it('admin receives a separate notification when coordinator manually dismisses employee', async () => {
+            const mockRow = {
+                get: (key: string) => mockEmployees[0][key as keyof Employee],
+                set: jest.fn(),
+                save: jest.fn().mockResolvedValue(undefined),
+                toObject: () => mockEmployees[0],
+            };
+            const mockNotificationSheet = { addRow: jest.fn().mockResolvedValue(undefined) };
+            mockedGetSheet.mockImplementation((title: string) => {
+                if (title === 'Employees') return Promise.resolve({ getRows: jest.fn().mockResolvedValue([mockRow]), addRow: jest.fn() });
+                if (title === 'Powiadomienia') return Promise.resolve(mockNotificationSheet);
+                return Promise.resolve({ getRows: jest.fn().mockResolvedValue([]), addRow: jest.fn() });
+            });
+
+            await updateEmployee('emp-1', { status: 'dismissed', checkOutDate: '2024-06-01' }, 'coord-1');
+
+            // Two notifications: one for entity's coordinator (coord-1), one for admin (coord-admin)
+            expect(mockNotificationSheet.addRow).toHaveBeenCalledTimes(2);
+            const recipients = mockNotificationSheet.addRow.mock.calls.map((c: [Record<string, string>]) => c[0].recipientId);
+            expect(recipients).toContain('coord-1');
+            expect(recipients).toContain('coord-admin');
+        });
+
+        it('admin receives a separate notification when system auto-dismisses employee', async () => {
+            const pastDate = new Date();
+            pastDate.setDate(pastDate.getDate() - 3);
+            const pastDateStr = pastDate.toISOString().split('T')[0];
+
+            const mockEmployeeRow = {
+                get: (key: string) => {
+                    const data: Record<string, string> = { status: 'active', checkOutDate: pastDateStr, coordinatorId: 'coord-1', id: 'emp-1', firstName: 'Adam', lastName: 'Nowak', fullName: 'Nowak Adam' };
+                    return data[key] ?? '';
+                },
+                set: jest.fn(),
+                save: jest.fn().mockResolvedValue(undefined),
+                toObject: () => ({ status: 'active', checkOutDate: pastDateStr, coordinatorId: 'coord-1', id: 'emp-1', firstName: 'Adam', lastName: 'Nowak', fullName: 'Nowak Adam' }),
+            };
+            const mockNotificationSheet = { addRow: jest.fn().mockResolvedValue(undefined) };
+            mockedGetSheet.mockImplementation((title: string) => {
+                if (title === 'Employees') return Promise.resolve({ getRows: jest.fn().mockResolvedValue([mockEmployeeRow]), addRow: jest.fn() });
+                if (title === 'NonEmployees') return Promise.resolve({ getRows: jest.fn().mockResolvedValue([]), addRow: jest.fn() });
+                if (title === 'Powiadomienia') return Promise.resolve(mockNotificationSheet);
+                return Promise.resolve({ getRows: jest.fn().mockResolvedValue([]), addRow: jest.fn() });
+            });
+
+            await checkAndUpdateStatuses('system');
+
+            // Two notifications: one for entity's coordinator (coord-1), one for admin (coord-admin)
+            expect(mockNotificationSheet.addRow).toHaveBeenCalledTimes(2);
+            const recipients = mockNotificationSheet.addRow.mock.calls.map((c: [Record<string, string>]) => c[0].recipientId);
+            expect(recipients).toContain('coord-1');
+            expect(recipients).toContain('coord-admin');
+        });
+
+        it('admin does NOT receive notification for regular (non-dismissal) employee update', async () => {
+            const mockRow = {
+                get: (key: string) => mockEmployees[0][key as keyof Employee],
+                set: jest.fn(),
+                save: jest.fn().mockResolvedValue(undefined),
+                toObject: () => mockEmployees[0],
+            };
+            const mockNotificationSheet = { addRow: jest.fn().mockResolvedValue(undefined) };
+            mockedGetSheet.mockImplementation((title: string) => {
+                if (title === 'Employees') return Promise.resolve({ getRows: jest.fn().mockResolvedValue([mockRow]), addRow: jest.fn() });
+                if (title === 'Powiadomienia') return Promise.resolve(mockNotificationSheet);
+                return Promise.resolve({ getRows: jest.fn().mockResolvedValue([]), addRow: jest.fn() });
+            });
+
+            await updateEmployee('emp-1', { comments: 'nowy komentarz' }, 'coord-1');
+
+            // Only one notification: for the entity's coordinator, no copy to admin
+            expect(mockNotificationSheet.addRow).toHaveBeenCalledTimes(1);
+            const recipient = mockNotificationSheet.addRow.mock.calls[0][0].recipientId;
+            expect(recipient).toBe('coord-1');
+        });
+    });
 
     describe('addNonEmployee', () => {
         it('should correctly serialize and add a non-employee', async () => {

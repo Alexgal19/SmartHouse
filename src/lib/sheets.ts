@@ -607,6 +607,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet, bypassCache = false)
                 isDriver: rowObj.isDriver === 'TRUE',
                 isRekrutacja: rowObj.isRekrutacja === 'TRUE',
                 isBok: rowObj.isBok === 'TRUE',
+                isGuest: rowObj.isGuest === 'TRUE',
                 canEditPastControlCards: rowObj.canEditPastControlCards === 'TRUE',
                 departments: (rowObj?.departments as string || '').split(',').filter(Boolean),
                 password: rowObj.password as string,
@@ -1174,7 +1175,7 @@ export async function addOdbiorEntry(entry: OdbiorEntry): Promise<void> {
     const sheet = await getSheet(SHEET_NAME_ODBIOR_ENTRIES, ODBIOR_ENTRY_HEADERS);
     await withTimeout(sheet.addRow(serializeOdbiorEntry(entry), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRow(OdbiorEntries)');
     if (odbiorEntriesCache) {
-        odbiorEntriesCache.data.push(entry);
+        odbiorEntriesCache.data = [...odbiorEntriesCache.data, entry];
         odbiorEntriesCache.timestamp = Date.now();
     }
 }
@@ -1193,6 +1194,7 @@ export async function updateOdbiorEntry(id: string, updates: Partial<OdbiorEntry
         const idx = odbiorEntriesCache.data.findIndex(e => e.id === id);
         if (idx !== -1) {
             odbiorEntriesCache.data[idx] = { ...odbiorEntriesCache.data[idx], ...updates };
+            odbiorEntriesCache.data = [...odbiorEntriesCache.data];
             odbiorEntriesCache.timestamp = Date.now();
         }
     }
@@ -1393,6 +1395,7 @@ export async function appendInterviewResult(candidateId: string, entry: import('
         const idx = candidatesCache.data.findIndex(c => c.id === candidateId);
         if (idx !== -1) {
             candidatesCache.data[idx] = { ...candidatesCache.data[idx], interviewHistory: history };
+            candidatesCache.data = [...candidatesCache.data];
             candidatesCache.timestamp = Date.now();
         }
     }
@@ -1415,7 +1418,7 @@ export async function addCandidate(candidate: import('../types').Candidate): Pro
     const sheet = await getSheet(SHEET_NAME_CANDIDATES, CANDIDATE_HEADERS);
     await withTimeout(sheet.addRow(serializeCandidate(candidate), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRow(Candidates)');
     if (candidatesCache) {
-        candidatesCache.data.push(candidate);
+        candidatesCache.data = [...candidatesCache.data, candidate];
         candidatesCache.timestamp = Date.now();
     }
 }
@@ -1434,6 +1437,7 @@ export async function updateCandidate(id: string, updates: Partial<import('../ty
         const idx = candidatesCache.data.findIndex(c => c.id === id);
         if (idx !== -1) {
             candidatesCache.data[idx] = { ...candidatesCache.data[idx], ...updates };
+            candidatesCache.data = [...candidatesCache.data];
             candidatesCache.timestamp = Date.now();
         }
     }
@@ -1456,7 +1460,7 @@ export async function deleteCandidate(id: string): Promise<void> {
 
 const CANDIDATE_DEMAND_HEADERS = [
     'id', 'candidateId', 'candidateFirstName', 'candidateLastName',
-    'requestedBy', 'requestedAt', 'acknowledgedBy', 'acknowledgedAt', 'status', 'retryCount', 'sentTo', 'estimatedDeliveryTime', 'pickupAddress', 'roomNumber',
+    'requestedBy', 'requestedAt', 'acknowledgedBy', 'acknowledgedAt', 'status', 'retryCount', 'sentTo', 'estimatedDeliveryTime', 'pickupAddress', 'roomNumber', 'hasLuggage', 'originalCandidateStatus'
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1478,6 +1482,8 @@ const deserializeCandidateDemand = (row: any): import('../types').CandidateDeman
         estimatedDeliveryTime: (row.estimatedDeliveryTime ?? row.get?.('estimatedDeliveryTime') as string) || undefined,
         pickupAddress: (row.pickupAddress ?? row.get?.('pickupAddress') as string) || undefined,
         roomNumber: (row.roomNumber ?? row.get?.('roomNumber') as string) || undefined,
+        hasLuggage: String(row.hasLuggage ?? row.get?.('hasLuggage')).toLowerCase() === 'true',
+        originalCandidateStatus: (row.originalCandidateStatus ?? row.get?.('originalCandidateStatus') as string) || undefined,
     };
 };
 
@@ -1497,6 +1503,8 @@ function serializeCandidateDemand(demand: import('../types').CandidateDemand): R
         estimatedDeliveryTime: demand.estimatedDeliveryTime || '',
         pickupAddress: demand.pickupAddress || '',
         roomNumber: demand.roomNumber || '',
+        hasLuggage: demand.hasLuggage ? 'true' : '',
+        originalCandidateStatus: demand.originalCandidateStatus || '',
     };
 }
 
@@ -1517,7 +1525,7 @@ export async function addCandidateDemand(demand: import('../types').CandidateDem
     const sheet = await getSheet(SHEET_NAME_CANDIDATE_DEMANDS, CANDIDATE_DEMAND_HEADERS);
     await withTimeout(sheet.addRow(serializeCandidateDemand(demand)), TIMEOUT_MS, 'sheet.addRow(CandidateDemands)');
     if (candidateDemandsCache) {
-        candidateDemandsCache.data.push(demand);
+        candidateDemandsCache.data = [...candidateDemandsCache.data, demand];
         candidateDemandsCache.timestamp = Date.now();
     }
 }
@@ -1536,6 +1544,7 @@ export async function updateCandidateDemand(id: string, updates: Partial<import(
         const idx = candidateDemandsCache.data.findIndex(d => d.id === id);
         if (idx !== -1) {
             candidateDemandsCache.data[idx] = { ...candidateDemandsCache.data[idx], ...updates };
+            candidateDemandsCache.data = [...candidateDemandsCache.data];
             candidateDemandsCache.timestamp = Date.now();
         }
     }

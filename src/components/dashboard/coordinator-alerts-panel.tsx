@@ -40,7 +40,7 @@ function DetailList({ items }: { items: AlertDetailItem[] }) {
         <div key={`${item.id}-${item.extra}`} className="flex items-center justify-between gap-2 py-0.5">
           <Link
             href={item.link}
-            className="text-xs text-foreground hover:text-primary hover:underline truncate max-w-[180px] flex items-center gap-1"
+            className="text-xs text-gray-900 hover:text-primary hover:underline truncate max-w-[180px] flex items-center gap-1"
           >
             {item.name}
             <ExternalLink className="h-2.5 w-2.5 flex-shrink-0 opacity-50" />

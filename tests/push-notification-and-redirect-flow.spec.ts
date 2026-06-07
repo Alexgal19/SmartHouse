@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { dashboardUrl } from './helpers/login';
+import { loginAsAdmin, dashboardUrl } from './helpers/login';
 
 /**
  * Push Notification Redirect Flow E2E
@@ -11,17 +11,6 @@ import { dashboardUrl } from './helpers/login';
  * 4. Push notification URL /dashboard?view=zapotrzebowania navigates correctly
  */
 
-const ADMIN_NAME = 'admin';
-const ADMIN_PASS = 'SWhouse$21';
-
-async function simpleLogin(page: Page) {
-    await page.goto('/login');
-    await page.fill('#name', ADMIN_NAME);
-    await page.fill('#password', ADMIN_PASS);
-    await page.locator('button[type="submit"]').click();
-    await page.waitForURL('/dashboard**', { timeout: 30000 });
-}
-
 test.use({ storageState: undefined });
 test.setTimeout(60000);
 
@@ -31,7 +20,7 @@ test.describe.serial('Push Notification & Redirect Flow', () => {
 
     test.beforeAll(async ({ browser }) => {
         page = await browser.newPage();
-        await simpleLogin(page);
+        await loginAsAdmin(page);
     });
 
     test.afterAll(async () => {

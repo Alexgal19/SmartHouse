@@ -32,6 +32,7 @@ import {
 import { Eye, ImagePlus, Minus, Plus, FileText, X, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/i18n';
+import { useViewPersistence } from '@/hooks/use-view-persistence';
 
 const INITIAL_STATS = { dostarczone: 0, wTrakcie: 0, nieprzyjete: 0 };
 const INITIAL_SUBMISSIONS: { id: string; status: string; date: string; from: string; persons: number; recruiter: string }[] = [];
@@ -370,6 +371,8 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const { toast } = useToast();
     const { t } = useLanguage();
+    
+    useViewPersistence('odbior');
 
     const loadZgloszenia = useCallback(async () => {
         try {
@@ -652,7 +655,7 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                                         <Eye className="h-4 w-4 mr-2" />
                                         {t('odbior.details')}
                                     </Button>
-                                    {(_currentUser.isAdmin || !_currentUser.isDriver) && (
+                                    {(_currentUser.isAdmin || !_currentUser.isDriver) && !_currentUser.isGuest && (
                                         <Button
                                             variant="outline"
                                             size="sm"
@@ -717,7 +720,7 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                                                         >
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
-                                                        {(_currentUser.isAdmin || !_currentUser.isDriver) && (
+                                                        {(_currentUser.isAdmin || !_currentUser.isDriver) && !_currentUser.isGuest && (
                                                             <Button
                                                                 variant="outline"
                                                                 size="icon"

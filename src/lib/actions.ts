@@ -540,6 +540,27 @@ const createNotification = async (
             }
         }
 
+        // Notify admins separately for dismissal actions
+        const isDismissal = action === 'automatycznie zwolnił' ||
+            changes.some(c => c.field === 'status' && (c.newValue === 'dismissed' || c.newValue === 'Zwolniony'));
+
+        if (isDismissal) {
+            const adminCoordinators = settings.coordinators.filter(c => c.isAdmin && c.uid !== recipientId);
+            for (const adminCoord of adminCoordinators) {
+                const adminNotification: Notification = {
+                    ...notification,
+                    id: `notif-${Date.now()}-${Math.random()}`,
+                    recipientId: adminCoord.uid,
+                };
+                await withTimeout(sheet.addRow(serializeNotification(adminNotification)), TIMEOUT_MS, 'sheet.addRow(AdminNotification)');
+                if (sendPush) {
+                    const pushTitle = 'Powiadomienie SmartHouse';
+                    const pushLink = `/dashboard/employees?edit=${entity.id}`;
+                    await sendPushNotification(adminCoord.uid, pushTitle, message, pushLink);
+                }
+            }
+        }
+
     } catch (e: unknown) {
         console.error("Could not create notification:", e);
     }
@@ -3158,6 +3179,7 @@ export async function sendCandidateDemandNotificationAction(
             pickupAddress,
             roomNumber,
             hasLuggage,
+            originalCandidateStatus: candidate.status,
         };
         await addCandidateDemandToSheet(demand);
 
@@ -3238,6 +3260,37 @@ export async function deleteCandidateDemandAction(
     }
 }
 
+export async function cancelCandidateDemandAction(demandId: string, _actorUid: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        const session = await requireSession();
+        if (!session.isAdmin && !session.isRekrutacja) {
+            return { success: false, error: 'Brak uprawnień do usunięcia zapotrzebowania.' };
+        }
+        
+        // Find demand to get original candidate status
+        const demands = await getCandidateDemandsFromSheet();
+        const demand = demands.find(d => d.id === demandId);
+        
+        if (!demand) {
+            return { success: false, error: 'Nie znaleziono zapotrzebowania.' };
+        }
+
+        // Delete the demand
+        await deleteCandidateDemandFromSheet(demandId);
+        
+        // Restore candidate status
+        const restoreStatus = demand.originalCandidateStatus || 'zakwaterowana_oczekuje_na_rozmowe';
+        await updateCandidateInSheet(demand.candidateId, { status: restoreStatus as import('../types').Candidate['status'] });
+        invalidateCandidatesCache();
+
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error cancelling candidate demand:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
 export async function getCandidateDemandsAction(): Promise<import('../types').CandidateDemand[]> {
     try {
         await requireSession();
@@ -3306,4 +3359,5 @@ export async function recordInterviewResultAction(
         return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
     }
 }
+
 

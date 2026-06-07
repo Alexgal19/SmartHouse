@@ -9,6 +9,7 @@ import { RefreshCw, Bell, BellOff, ExternalLink } from 'lucide-react';
 import type { ControlCard, SessionData, Settings, ControlCardCommentStatus } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 import { useLanguage } from '@/lib/i18n';
+import { useMainLayout } from '@/components/layouts/main-layout';
 
 interface CommentItem {
   cardId: string;
@@ -43,10 +44,18 @@ function extractComments(
   addresses: Settings['addresses'],
   uid: string,
   isAdmin: boolean,
+  selectedCoordinatorId?: string,
 ): CommentItem[] {
   const items: CommentItem[] = [];
 
-  const filtered = isAdmin ? cards : cards.filter(c => c.coordinatorId === uid);
+  let filtered = cards;
+  if (isAdmin) {
+    if (selectedCoordinatorId && selectedCoordinatorId !== 'all') {
+      filtered = cards.filter(c => c.coordinatorId === selectedCoordinatorId);
+    }
+  } else {
+    filtered = cards.filter(c => c.coordinatorId === uid);
+  }
 
   for (const card of filtered) {
     const locality = addresses.find(a => a.id === card.addressId)?.locality ?? '';
@@ -103,6 +112,7 @@ interface Props {
 
 export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
   const { t } = useLanguage();
+  const { selectedCoordinatorId } = useMainLayout();
   const [allComments, setAllComments] = useState<CommentItem[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<ControlCardCommentStatus | 'Aktywne' | 'Wszystkie'>('Aktywne');
   const [loading, setLoading] = useState(true);
@@ -136,7 +146,7 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
       const res = await fetch('/api/control-cards');
       if (!res.ok) throw new Error('HTTP error');
       const cards: ControlCard[] = await res.json();
-      const all = extractComments(cards, settings.addresses, currentUser.uid, currentUser.isAdmin);
+      const all = extractComments(cards, settings.addresses, currentUser.uid, currentUser.isAdmin, selectedCoordinatorId);
       setAllComments(all);
     } catch {
       setError(true);
@@ -153,7 +163,7 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
     const interval = setInterval(() => fetchComments(true), AUTO_REFRESH_MS);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedCoordinatorId]);
 
   const filteredComments = allComments?.filter(item => {
     if (statusFilter === 'Wszystkie') return true;
@@ -231,7 +241,7 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
                   href={`/dashboard/control-cards?address=${item.addressId}&commentId=${item.commentId}`}
                   className="block space-y-0.5"
                 >
-                    <p className="text-xs font-medium text-foreground flex items-center gap-1">
+                    <p className="text-xs font-medium text-gray-900 flex items-center gap-1">
                       {item.coordinator}
                       {item.locality
                         ? <span className="text-muted-foreground font-normal"> · {item.locality} · {item.addressName}</span>
@@ -240,7 +250,7 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
                       <ExternalLink className="h-2.5 w-2.5 text-muted-foreground opacity-0 group-hover:opacity-60 flex-shrink-0 ml-0.5 transition-opacity" />
                     </p>
                     <p className="text-xs text-muted-foreground">{item.context}</p>
-                    <p className="text-xs text-foreground italic line-clamp-3 whitespace-pre-wrap">
+                    <p className="text-xs text-gray-900 italic line-clamp-3 whitespace-pre-wrap">
                       &ldquo;{item.text}&rdquo;
                     </p>
                     <p className="text-[10px] text-muted-foreground">

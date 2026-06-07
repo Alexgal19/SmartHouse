@@ -417,6 +417,9 @@ export const pl = {
     'form.paymentType': 'Typ płatności',
     'form.locality': 'Miejscowość',
     'form.selectLocality': 'Wybierz miejscowość',
+    'form.selectAccommodation': 'Wybierz zakwaterowanie',
+    'form.selectLocalityToSeeAvailability': 'Wybierz miejscowość, aby zobaczyć dostępność adresów',
+    'form.addressPreviewDialogTitle': 'Podgląd i wybór dostępności miejsc',
 
     // Toast messages
     'toast.dataRefreshed': 'Dane zostały odświeżone.',
@@ -1053,6 +1056,7 @@ export const pl = {
     'candidate.dateAdded': 'Data dodania',
     'candidate.searchBySurname': 'Szukaj po nazwisku...',
     'candidate.demandBtn': 'Zapotrzebowanie na kandydata',
+    'candidate.cancelDemandBtn': 'Odwołaj zapotrzebowanie',
     'candidate.demandSent': 'Wysłano zapotrzebowanie',
     'candidate.demandSentDesc': 'Powiadomiono {count} koordynatorów.',
     'candidate.demandError': 'Nie udało się wysłać powiadomień.',
