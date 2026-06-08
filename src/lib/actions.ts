@@ -457,7 +457,11 @@ const generateSmartNotificationMessage = (
             const addressChange = changes.find(c => c.field === FIELD_LABELS['address']);
             const checkoutChange = changes.find(c => c.field === FIELD_LABELS['checkOutDate']);
 
-            if (statusChange && statusChange.newValue === 'dismissed') {
+            // newValue has already been passed through VALUE_LABELS, so 'dismissed' → 'Zwolniony'
+            const isDismissalChange = statusChange &&
+                (statusChange.newValue === 'dismissed' || statusChange.newValue === 'Zwolniony');
+
+            if (isDismissalChange) {
                 message = `Zwolnił ${entityType} ${entityFullName}.`;
                 type = 'warning';
             } else if (addressChange) {
@@ -506,53 +510,88 @@ const createNotification = async (
         }
 
         const recipient = settings.coordinators.find(c => c.uid === recipientId);
-        if (!recipient) return;
 
-        const { message, type } = generateSmartNotificationMessage(actor.name, entity, notificationAction, readableChanges);
-
-        const notification: Notification = {
-            id: `notif-${Date.now()}-${Math.random()}`,
-            message,
-            entityId: entity.id,
-            entityFirstName: entity.firstName,
-            entityLastName: entity.lastName,
-            actorName: actor.name,
-            recipientId: recipient.uid,
-            createdAt: new Date().toISOString(),
-            isRead: false,
-            type: type,
-            changes: readableChanges
-        };
-
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
-        await withTimeout(sheet.addRow(serializeNotification(notification)), TIMEOUT_MS, 'sheet.addRow(Notification)');
-
-        const entityType = !('coordinatorId' in entity) ? 'bok-resident' : ('zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca');
-        await writeToAuditLog(actor.uid, actor.name, action, entityType, entity.id, changes);
-
-        // Send Push Notification (only if explicitly enabled)
-        if (sendPush && recipientId) {
-            const pushTitle = 'Powiadomienie SmartHouse';
-            const pushLink = `/dashboard/employees?edit=${entity.id}`;
-            const pushResult = await sendPushNotification(recipientId, pushTitle, message, pushLink);
-            if (!pushResult.success) {
-                console.error("Failed to send push notification:", pushResult.error);
-            }
-        }
-
-        // Notify admins separately for dismissal actions
+        // Detect dismissal early so we can still notify admins even if primary recipient is missing
         const isDismissal = action === 'automatycznie zwolnił' ||
             changes.some(c => c.field === 'status' && (c.newValue === 'dismissed' || c.newValue === 'Zwolniony'));
 
-        if (isDismissal) {
-            const adminCoordinators = settings.coordinators.filter(c => c.isAdmin && c.uid !== recipientId);
+        // If primary recipient exists, send the notification to them
+        if (recipient) {
+            const { message, type } = generateSmartNotificationMessage(actor.name, entity, notificationAction, readableChanges);
+
+            const notification: Notification = {
+                id: `notif-${Date.now()}-${Math.random()}`,
+                message,
+                entityId: entity.id,
+                entityFirstName: entity.firstName,
+                entityLastName: entity.lastName,
+                actorName: actor.name,
+                recipientId: recipient.uid,
+                createdAt: new Date().toISOString(),
+                isRead: false,
+                type: type,
+                changes: readableChanges
+            };
+
+            const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
+            await withTimeout(sheet.addRow(serializeNotification(notification)), TIMEOUT_MS, 'sheet.addRow(Notification)');
+
+            const entityType = !('coordinatorId' in entity) ? 'bok-resident' : ('zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca');
+            await writeToAuditLog(actor.uid, actor.name, action, entityType, entity.id, changes);
+
+            // Send Push Notification (only if explicitly enabled)
+            if (sendPush && recipientId) {
+                const pushTitle = 'Powiadomienie SmartHouse';
+                const pushLink = `/dashboard/employees?edit=${entity.id}`;
+                const pushResult = await sendPushNotification(recipientId, pushTitle, message, pushLink);
+                if (!pushResult.success) {
+                    console.error("Failed to send push notification:", pushResult.error);
+                }
+            }
+
+            // Notify admins separately for dismissal actions
+            if (isDismissal) {
+                const adminCoordinators = settings.coordinators.filter(c => c.isAdmin && c.uid !== recipientId);
+                for (const adminCoord of adminCoordinators) {
+                    const adminNotification: Notification = {
+                        ...notification,
+                        id: `notif-${Date.now()}-${Math.random()}`,
+                        recipientId: adminCoord.uid,
+                    };
+                    const sheet2 = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
+                    await withTimeout(sheet2.addRow(serializeNotification(adminNotification)), TIMEOUT_MS, 'sheet.addRow(AdminNotification)');
+                    if (sendPush) {
+                        const pushTitle = 'Powiadomienie SmartHouse';
+                        const pushLink = `/dashboard/employees?edit=${entity.id}`;
+                        await sendPushNotification(adminCoord.uid, pushTitle, message, pushLink);
+                    }
+                }
+            }
+        } else if (isDismissal) {
+            // No primary recipient (employee has no coordinatorId or coordinator was deleted)
+            // but we still MUST notify ALL admins about this dismissal
+            const { message, type } = generateSmartNotificationMessage(actor.name, entity, notificationAction, readableChanges);
+
+            const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
+            const entityType = !('coordinatorId' in entity) ? 'bok-resident' : ('zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca');
+            await writeToAuditLog(actor.uid, actor.name, action, entityType, entity.id, changes);
+
+            const adminCoordinators = settings.coordinators.filter(c => c.isAdmin);
             for (const adminCoord of adminCoordinators) {
                 const adminNotification: Notification = {
-                    ...notification,
                     id: `notif-${Date.now()}-${Math.random()}`,
+                    message,
+                    entityId: entity.id,
+                    entityFirstName: entity.firstName,
+                    entityLastName: entity.lastName,
+                    actorName: actor.name,
                     recipientId: adminCoord.uid,
+                    createdAt: new Date().toISOString(),
+                    isRead: false,
+                    type: type,
+                    changes: readableChanges
                 };
-                await withTimeout(sheet.addRow(serializeNotification(adminNotification)), TIMEOUT_MS, 'sheet.addRow(AdminNotification)');
+                await withTimeout(sheet.addRow(serializeNotification(adminNotification)), TIMEOUT_MS, 'sheet.addRow(AdminNotification-noRecipient)');
                 if (sendPush) {
                     const pushTitle = 'Powiadomienie SmartHouse';
                     const pushLink = `/dashboard/employees?edit=${entity.id}`;
@@ -560,6 +599,7 @@ const createNotification = async (
                 }
             }
         }
+        // Non-dismissal action with no recipient — silently skip (expected for info updates without coordinator)
 
     } catch (e: unknown) {
         console.error("Could not create notification:", e);

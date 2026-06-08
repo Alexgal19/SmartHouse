@@ -29,6 +29,8 @@
 | 18 | React / Hooks | Ślepe dodawanie funkcji resetujących (np. `makeDefault`) do `useEffect deps` by uciszyć linter = form reset loop. Zawsze używaj `useCallback` lub wynieś funkcję. |
 | 19 | AI Agents / QA | **KRYTYCZNE:** Zanim zaproponujesz `git commit` nowej funkcji, **MUSISZ** napisać i uruchomić test E2E/integracyjny. Nie pytaj o commit bez testu! |
 | 20 | Dokumentacja / MD | Pliki markdown (.md) muszą mieć puste linie wokół nagłówków, list i kodów (unikaj MD022/MD031/MD032) oraz max 1 pustą linię z rzędu (MD012). |
+| 21 | React / State — Race Condition | `refreshData` (co 30s) nadpisuje `rawSettings` danymi z Sheets **przed** utrwaleniem zapisu → odwraca optimistic update. Użyj `settingsLastUpdatedRef` + guard 15s w `refreshData`. Identyczny wzorzec jak `deletedNotificationIds` dla powiadomień. |
+| 22 | Powiadomienia / Backend | `createNotification`: `if (!recipient) return` blokowało powiadomienia dla adminów gdy pracownik nie miał `coordinatorId`. Przy zwolnieniu (`isDismissal`) powiadomienie MUSI dotrzeć do adminów niezależnie od stanu koordynatora. Oblicz `isDismissal` PRZED early-return. Drugi bug: `statusChange.newValue === 'dismissed'` zawsze fałsz — VALUE_LABELS tłumaczy `'dismissed'` → `'Zwolniony'`. Sprawdzaj obie wartości. |
 
 ### React / UI — Znikające stany w formularzach (Oszukiwanie referencji)
 
@@ -463,3 +465,13 @@ const handlePointerDown = (e: React.PointerEvent) => {
 **Rozwiązanie:** Zawsze otaczaj bloki list (`-`, `*`), bloki kodu (` ``` `), cytaty/alerty (`>`) oraz nagłówki (`#`, `##`, `###`) pustymi liniami przed i po nich. Unikaj wielokrotnych kolejnych pustych linii (dozwolona max 1 pusta linia z rzędu).
 **Obszar ryzyka:** Wszystkie automatycznie tworzone i modyfikowane pliki Markdown (`.md`), w szczególności `implementation_plan.md`, `walkthrough.md` oraz `task.md`.
 **Pliki:** `implementation_plan.md`, `walkthrough.md`, `task.md`
+
+---
+
+### React / State — Race condition: refreshData nadpisuje optimistic update dla settings
+
+**Symptom:** Po odblokowaniu/zablokowaniu pokoju lub adresu (switch w housing-view), pokój wracał do poprzedniego stanu po ≤30 sekundach (przy kolejnym cyklu `refreshData`).
+**Root cause:** `refreshData` (wywoływane co 30s przez `setInterval`) bezwarunkowo nadpisywało `rawSettings` danymi pobranymi z Google Sheets (`setRawSettings(settings)`). Ponieważ Google Sheets API może jeszcze nie utrwalić zapisu (`updateSettings` → `row.save()` → Sheets replikacja), `getSettings()` zwracało stary stan z `isLocked: true` i nadpisywało optimistic update.
+**Rozwiązanie:** Dodano `settingsLastUpdatedRef = useRef<number>(0)` śledzący timestamp ostatniego `handleUpdateSettings`. W `refreshData` dodano guard: jeśli `Date.now() - settingsLastUpdatedRef.current < 15_000`, pomijamy `setRawSettings(settings)`. Po pomyślnym `updateSettings` ustawiamy `settingsLastUpdatedRef.current = Date.now()`. Identyczny wzorzec jak `deletedNotificationIds` stosowany dla powiadomień.
+**Obszar ryzyka:** Wszystkie operacje zapisu do Sheets przez `handleUpdateSettings` — zmiana statusu pokoju, blokowanie adresu, zmiana ustawień koordynatora itp. Ogólna zasada: każdy optimistic update w połączeniu z background refresh jest podatny na ten wzorzec race condition.
+**Pliki:** `src/components/layouts/main-layout.tsx`
