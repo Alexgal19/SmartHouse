@@ -47,7 +47,8 @@ test.describe.serial('Pełny flow: Odbiór → Rekrutacja', () => {
         await ctaBtn.click();
 
         // Wypełnij formularz
-        await page.fill('input[placeholder="000 000 000"]', testPhone);
+        await page.fill('input[placeholder="Wpisz imię i nazwisko"]', 'E2E Recruiter');
+        await page.fill('input[placeholder="+48 000 000 000"]', testPhone);
         await page.locator('#auto, [value="autobusowa"]').first().click();
         await page.fill('textarea[placeholder="Dodatkowe informacje..."]', testComment);
 

@@ -5,7 +5,7 @@ const ADMIN_NAME = process.env.TEST_ADMIN_NAME || 'admin';
 const ADMIN_PASS = process.env.TEST_ADMIN_PASSWORD || '';
 
 async function goto(page: Page, view: string) {
-    await page.goto(`/dashboard?view=${view}`);
+    await page.goto(view === 'dashboard' ? '/dashboard' : `/dashboard/${view}`);
     await page.waitForLoadState('domcontentloaded');
     // Wait for main-layout data fetch to finish (Google Sheets can be slow)
     await expect(page.getByText('Wczytywanie danych...')).not.toBeVisible({ timeout: 90_000 });
@@ -112,9 +112,7 @@ test.describe('SmartHouse — testy regresji', () => {
         await page.waitForTimeout(3000);
 
         const t0 = Date.now();
-        await page.goto('/dashboard?view=odbior');
-        await page.waitForLoadState('domcontentloaded');
-        await page.waitForTimeout(2000);
+        await goto(page, 'odbior');
         const elapsed = Date.now() - t0;
 
         await page.screenshot({ path: 'test-results/smoke/ss_odbior.png', fullPage: true });

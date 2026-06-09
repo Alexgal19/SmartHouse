@@ -65,7 +65,7 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
             isFetchingRef.current = false;
             setLoading(false);
         }
-    }, [toast, t]);
+    }, []);
 
     useEffect(() => {
         if (activeView === 'zapotrzebowania') {

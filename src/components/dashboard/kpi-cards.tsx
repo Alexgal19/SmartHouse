@@ -39,7 +39,7 @@ const KpiCard = ({ title, value, icon, onClick, description, isHighlighted }: Kp
         )}
     >
         <div className="flex flex-row items-center justify-between space-y-0 mb-2 md:mb-4">
-            <p className="text-xs md:text-sm font-medium text-gray-400">{title}</p>
+            <h3 className="text-xs md:text-sm font-medium text-gray-400">{title}</h3>
             {icon}
         </div>
         <div>

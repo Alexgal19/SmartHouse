@@ -70,7 +70,7 @@ export async function loginAsAdmin(page: Page, targetUrl = '/dashboard'): Promis
 }
 
 export function recruitmentUrl(): string {
-    return `${BASE_URL}/dashboard?view=recruitment`;
+    return `${BASE_URL}/dashboard/recruitment`;
 }
 
 export function dashboardUrl(view = 'dashboard'): string {

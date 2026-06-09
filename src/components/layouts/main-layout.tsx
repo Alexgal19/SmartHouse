@@ -188,6 +188,10 @@ export default function MainLayout({
     const [currentUser] = useState<SessionData | null>(initialSession);
     const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
     const [deletedNotificationIds, setDeletedNotificationIds] = useState<string[]>([]);
+    // Tracks when settings were last saved — prevents background refreshData from overwriting
+    // optimistic UI state before Sheets has finished persisting (race condition)
+    const settingsLastUpdatedRef = useRef<number>(0);
+    const SETTINGS_REFRESH_GUARD_MS = 15_000; // 15 seconds
 
     const [rawEmployees, setRawEmployees] = useState<Employee[] | null>(null);
     const [rawNonEmployees, setRawNonEmployees] = useState<NonEmployee[] | null>(null);
@@ -414,7 +418,12 @@ export default function MainLayout({
 
             // 1. Fetch Settings FIRST (Critical & Fast)
             const settings = await getSettings(bypassCache);
-            setRawSettings(settings);
+            // Guard: skip overwriting rawSettings if handleUpdateSettings ran recently.
+            // Sheets writes are async — refreshData can race and revert optimistic UI changes.
+            const settingsAge = Date.now() - settingsLastUpdatedRef.current;
+            if (settingsAge > SETTINGS_REFRESH_GUARD_MS || settingsLastUpdatedRef.current === 0) {
+                setRawSettings(settings);
+            }
 
             // 2. Fetch other data SEQUENTIALLY/BATCHED to reduce burst on Google Sheets API (429 errors)
             // Fetch largest datasets first individually
@@ -838,6 +847,9 @@ export default function MainLayout({
         try {
             const updatedSettings = await updateSettings(newSettings);
             setRawSettings(prev => ({ ...prev!, ...updatedSettings }));
+            // Mark the time of this update — refreshData will skip overwriting rawSettings
+            // for the next SETTINGS_REFRESH_GUARD_MS to avoid reverting optimistic changes
+            settingsLastUpdatedRef.current = Date.now();
             toast({ title: t('common.success'), description: t('toast.settingsSaved') });
             window.dispatchEvent(new Event('settings-updated'));
         } catch (e) {
