@@ -21,7 +21,7 @@ import {
     isPendingPlaceholder,
     dataUrlToBlob,
     blobToDataUrl,
-} from '../offline-photo-store';
+} from '@/lib/offline-photo-store';
 
 const TINY_JPEG_DATA_URL = 'data:image/jpeg;base64,/9j/4AAQSkZJRg==';
 
