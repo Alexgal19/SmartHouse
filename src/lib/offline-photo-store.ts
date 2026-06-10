@@ -68,10 +68,20 @@ export function isOfflinePhotoStoreSupported(): boolean {
     return typeof indexedDB !== 'undefined';
 }
 
+let idFallbackCounter = 0;
+
 export function newPendingPhotoId(): string {
-    const uuid = typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    let uuid: string;
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        uuid = crypto.randomUUID();
+    } else if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        uuid = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    } else {
+        // Środowiska bez Web Crypto (bardzo stare webview) — unikalność per urządzenie
+        // zapewnia timestamp + licznik; ID nie pełni funkcji kryptograficznej
+        uuid = `${Date.now()}-${idFallbackCounter++}`;
+    }
     return `${PENDING_PHOTO_PREFIX}${uuid}`;
 }
 

@@ -1114,7 +1114,8 @@ function ControlCardDialog({
 
     // Generic photo upload handler — persists to offline buffer, tries server upload;
     // on failure (no network) falls back to data URL (photo stays safe in IndexedDB)
-    const uploadPhotos = async (files: FileList, key: 'kitchen' | 'bathroom' | 'meter' | string): Promise<string[]> => {
+    // key: 'kitchen' | 'bathroom' | 'meter' albo roomId pokoju
+    const uploadPhotos = async (files: FileList, key: string): Promise<string[]> => {
         const isImg = (f: File) => f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(f.name) || f.type === '';
         const sectionFields: Record<string, string> = { kitchen: 'kitchenPhotoUrls', bathroom: 'bathroomPhotoUrls', meter: 'meterPhotoUrls' };
         const field = sectionFields[key] || `room:${key}`;

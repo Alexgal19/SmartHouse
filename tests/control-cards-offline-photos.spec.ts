@@ -58,15 +58,15 @@ test.describe('Karty Kontroli — bufor offline zdjęć', () => {
         await page.waitForLoadState('networkidle');
 
         // Rozwiń pierwszą sekcję miejscowości (nagłówek ma licznik "x/y") i otwórz pierwszy adres
-        const sectionHeader = page.getByRole('button').filter({ hasText: /\d+\/\d+/ }).first();
+        const sectionHeader = page.getByRole('button').filter({ hasText: /\d\/\d/ }).first();
         if (!(await sectionHeader.isVisible().catch(() => false))) {
             console.log('Brak adresów w widoku kart kontroli — test pominięty.');
             return;
         }
         await sectionHeader.click();
-        await page.waitForTimeout(600); // animacja rozwijania akordeonu (framer-motion)
+        // Playwright czeka na stabilność elementu, więc animacja akordeonu nie wymaga sleep
         const addressRow = page.locator('button:has(.lucide-chevron-right)').first();
-        await expect(addressRow).toBeVisible();
+        await expect(addressRow).toBeVisible({ timeout: 10_000 });
         await addressRow.click();
 
         const dialog = page.locator('[role="dialog"]');

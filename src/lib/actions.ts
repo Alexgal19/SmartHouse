@@ -22,6 +22,8 @@ import {
     getControlCards as getControlCardsFromSheet,
     upsertStartList as upsertStartListInSheet,
     updateStartListFields as updateStartListFieldsInSheet,
+    invalidateControlCardsCache,
+    invalidateStartListsCache,
     getOdbiorEntries as getOdbiorEntriesFromSheet,
     addOdbiorEntry as addOdbiorEntryToSheet,
     updateOdbiorEntry as updateOdbiorEntryInSheet,
@@ -2700,6 +2702,8 @@ export async function attachSyncedPhotoUrlsAction(
             arrs.reduce((acc, arr) => acc + (arr || []).filter(u => u.startsWith('pending_')).length, 0);
 
         if (context === 'control-card') {
+            // Świeży odczyt przed read-modify-write — cache mógłby nadpisać równoległe edycje zdjęć
+            await invalidateControlCardsCache();
             const cards = await getControlCardsFromSheet();
             const card = cards.find(c => c.id === contextId);
             if (!card) throw new Error('Control card not found');
@@ -2724,6 +2728,8 @@ export async function attachSyncedPhotoUrlsAction(
             return { success: true, remaining };
         }
 
+        // Świeży odczyt przed read-modify-write — cache mógłby nadpisać równoległe edycje zdjęć
+        await invalidateStartListsCache();
         const lists = await getStartListsFromSheet();
         const list = lists.find(s => s.addressId === contextId);
         if (!list) throw new Error('Start list not found');

@@ -55,7 +55,8 @@ export function useOfflinePhotoSync() {
                     }
                     await removePendingPhoto(photo.id);
                     synced++;
-                } catch {
+                } catch (err) {
+                    console.warn('[OfflinePhotoSync] Nie udało się zsynchronizować zdjęcia', photo.id, err);
                     await releaseClaim(photo.id);
                 }
             }

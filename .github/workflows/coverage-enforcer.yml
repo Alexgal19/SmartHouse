@@ -34,7 +34,8 @@ jobs:
         id: check
         run: |
           node scripts/coverage-enforcer.mjs --check > coverage-report.json
-          echo "report=$(cat coverage-report.json)" >> "$GITHUB_OUTPUT"
+          # JSON jest wieloliniowy — kompaktuj do jednej linii dla GITHUB_OUTPUT
+          echo "report=$(jq -c . coverage-report.json)" >> "$GITHUB_OUTPUT"
 
       - name: Coverage Enforcer — generate & run
         if: ${{ steps.check.outputs.report != '{}' && fromJson(steps.check.outputs.report).untested != '[]' }}
