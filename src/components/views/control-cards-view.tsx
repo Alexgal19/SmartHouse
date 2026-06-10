@@ -31,6 +31,11 @@ import { useToast } from "@/components/ui/use-toast";
 import type { SessionData, Address, ControlCard, CleanlinessRating, RoomRating, StartList, StartListHousingType, StartListTransport, StartListStandard, StartListHeating, ControlCardComment, ControlCardCommentStatus } from "@/types";
 import { useMainLayout } from '@/components/layouts/main-layout';
 import { saveControlCardAction, editControlCardAction, deleteControlCardAction, uploadControlCardPhotoAction, saveStartListAction, setAddressNoMetersRequiredAction } from '@/lib/actions';
+import {
+    addPendingPhoto, newPendingPhotoId, getPhotosForContext, claimForUpload, releaseClaim,
+    removePendingPhoto, bindContext, blobToDataUrl, dataUrlToBlob, isOfflinePhotoStoreSupported,
+    isPendingPlaceholder, unboundContextId, type PendingPhotoContext,
+} from '@/lib/offline-photo-store';
 import { format } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { useLanguage } from '@/lib/i18n';
@@ -153,6 +158,82 @@ function PINLock({ onUnlock }: { onUnlock: () => void }) {
     );
 }
 
+// ─── Offline photo buffer helpers ────────────────────────────────────────────
+
+type StartListPhotoField = 'kitchenPhotoUrls' | 'bathroomPhotoUrls' | 'roomsPhotoUrls' | 'hallwayPhotoUrls';
+const STARTLIST_PHOTO_FIELDS: StartListPhotoField[] = ['kitchenPhotoUrls', 'bathroomPhotoUrls', 'roomsPhotoUrls', 'hallwayPhotoUrls'];
+
+/**
+ * Upload zdjęcia przez bufor offline: claim (ochrona przed podwójnym uploadem
+ * z tła / zapisu / hooka sync) → upload → remove z bufora albo release claimu.
+ * Zwraca URL serwera albo null gdy brak sieci / claim zajęty.
+ */
+async function uploadViaOfflineStore(pendingId: string, dataUrl: string, fileName = 'photo.jpg'): Promise<string | null> {
+    if (isOfflinePhotoStoreSupported()) {
+        const claimed = await claimForUpload(pendingId);
+        if (!claimed) return null;
+    }
+    try {
+        const res = await uploadControlCardPhotoAction(dataUrl, fileName, 'image/jpeg');
+        if (res.url) {
+            await removePendingPhoto(pendingId);
+            return res.url;
+        }
+        await releaseClaim(pendingId);
+        return null;
+    } catch {
+        await releaseClaim(pendingId);
+        return null;
+    }
+}
+
+/** Zapisuje zdjęcie do bufora offline; awaria IndexedDB nie przerywa flow (fallback RAM-only). */
+async function persistPendingPhoto(args: {
+    id: string; dataUrl: string; fileName: string;
+    context: PendingPhotoContext; contextId: string; field: string;
+}): Promise<void> {
+    try {
+        await addPendingPhoto({
+            id: args.id,
+            blob: dataUrlToBlob(args.dataUrl),
+            fileName: args.fileName,
+            mimeType: 'image/jpeg',
+            context: args.context,
+            contextId: args.contextId,
+            field: args.field,
+        });
+    } catch { /* brak IndexedDB — zdjęcie żyje tylko w RAM, jak przed zmianą */ }
+}
+
+/** Wczytuje pending zdjęcia z bufora jako data URL-e i rejestruje je w mapie dataUrl → pendingId. */
+async function loadPendingPhotosForContext(
+    context: PendingPhotoContext,
+    contextId: string,
+    idMap: Map<string, string>
+): Promise<{ field: string; id: string; dataUrl: string }[]> {
+    try {
+        const records = await getPhotosForContext(context, contextId);
+        const out: { field: string; id: string; dataUrl: string }[] = [];
+        for (const rec of records) {
+            const dataUrl = await blobToDataUrl(rec.blob);
+            idMap.set(dataUrl, rec.id);
+            out.push({ field: rec.field, id: rec.id, dataUrl });
+        }
+        return out;
+    } catch {
+        return [];
+    }
+}
+
+/** Wstawia pending zdjęcie do tablicy: podmienia placeholder "pending_*" albo dopisuje na końcu. */
+const mergePendingIntoArray = (arr: string[] | undefined, id: string, dataUrl: string): string[] => {
+    const list = [...(arr || [])];
+    const phIdx = list.indexOf(id);
+    if (phIdx >= 0) { list[phIdx] = dataUrl; return list; }
+    if (list.includes(dataUrl)) return list;
+    return [...list, dataUrl];
+};
+
 // ─── Photo Upload Widget (reusable) ──────────────────────────────────────────
 
 function PhotoUploadWidget({
@@ -228,6 +309,24 @@ function PhotoUploadWidget({
                 <div className="border border-border/40 rounded-lg p-2 bg-background flex gap-2 flex-wrap items-center">
                     {photoUrls.map((url, idx) => {
                         const isPending = url.startsWith('data:');
+                        // Placeholder "pending_*" — zdjęcie czeka w buforze offline (np. na innym urządzeniu)
+                        if (isPendingPlaceholder(url)) {
+                            return (
+                                <div key={idx} className="relative group rounded-md border border-dashed border-border/50 w-16 h-16 bg-muted flex items-center justify-center" title={t('controlCards.pendingUpload')}>
+                                    <CloudOff className="w-4 h-4 text-muted-foreground" />
+                                    {canEdit && (
+                                        <button
+                                            type="button"
+                                            title={t('controlCards.deletePhoto')}
+                                            onClick={() => onRemove(idx)}
+                                            className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        }
                         return (
                         <div key={idx} className="relative group rounded-md border border-border/50 overflow-hidden w-16 h-16 bg-muted">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -501,6 +600,29 @@ function StartListForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initial]);
 
+    // dataUrl → pendingId; pozwala przy zapisie podmienić data URL na placeholder zamiast base64
+    const pendingIdsRef = React.useRef(new Map<string, string>());
+
+    // Rehydratacja: zdjęcia z bufora offline (przeżyły zamknięcie karty / restart telefonu)
+    React.useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            const pend = await loadPendingPhotosForContext('start-list', address.id, pendingIdsRef.current);
+            if (cancelled || pend.length === 0) return;
+            setForm(prev => {
+                const next = { ...prev };
+                for (const p of pend) {
+                    const key = p.field as StartListPhotoField;
+                    if (!STARTLIST_PHOTO_FIELDS.includes(key)) continue;
+                    next[key] = mergePendingIntoArray(next[key], p.id, p.dataUrl);
+                }
+                return next;
+            });
+        })();
+        return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [address.id, initial]);
+
     const compressImage = (file: File): Promise<string> => new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -543,16 +665,25 @@ function StartListForm({
         }));
     }, []);
 
-    const uploadFiles = async (files: FileList): Promise<string[]> => {
+    const uploadFiles = async (field: StartListPhotoField, files: FileList): Promise<string[]> => {
         const dataUrls: string[] = [];
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             if (!isImageFile(file)) continue;
             const dataUrl = await compressImage(file);
             dataUrls.push(dataUrl);
+            // Trwały bufor offline — zdjęcie przeżyje zamknięcie karty / restart telefonu
+            const pendingId = newPendingPhotoId();
+            pendingIdsRef.current.set(dataUrl, pendingId);
+            await persistPendingPhoto({ id: pendingId, dataUrl, fileName: file.name || 'photo.jpg', context: 'start-list', contextId: address.id, field });
             // Background upload — replace data URL with server URL on success
-            uploadControlCardPhotoAction(dataUrl, file.name || 'photo.jpg', 'image/jpeg')
-                .then(res => { if (res.url) replaceStartListUrl(dataUrl, res.url); })
+            uploadViaOfflineStore(pendingId, dataUrl, file.name || 'photo.jpg')
+                .then(url => {
+                    if (url) {
+                        replaceStartListUrl(dataUrl, url);
+                        pendingIdsRef.current.delete(dataUrl);
+                    }
+                })
                 .catch(() => {});
         }
         return dataUrls; // Return data URLs immediately for display
@@ -562,7 +693,7 @@ function StartListForm({
         if (!e.target.files?.length) return;
         setUploading(prev => ({ ...prev, [field]: true }));
         try {
-            const urls = await uploadFiles(e.target.files);
+            const urls = await uploadFiles(field, e.target.files);
             if (urls.length) {
                 setForm(prev => ({ ...prev, [field]: [...(prev[field] || []), ...urls] }));
                 toast({ title: t('controlCards.photosAdded'), description: t('controlCards.uploadedCount', { count: urls.length }) });
@@ -577,6 +708,12 @@ function StartListForm({
     };
 
     const handleRemovePhoto = (field: 'kitchenPhotoUrls' | 'bathroomPhotoUrls' | 'roomsPhotoUrls' | 'hallwayPhotoUrls', idx: number) => {
+        const url = (form[field] || [])[idx];
+        if (url) {
+            // Usuń też z bufora offline, żeby rehydratacja nie wskrzesiła zdjęcia
+            const pid = pendingIdsRef.current.get(url) || (isPendingPlaceholder(url) ? url : null);
+            if (pid) { removePendingPhoto(pid).catch(() => {}); pendingIdsRef.current.delete(url); }
+        }
         setForm(prev => ({ ...prev, [field]: (prev[field] || []).filter((_, i) => i !== idx) }));
     };
 
@@ -606,6 +743,7 @@ function StartListForm({
 
         // Flush any photos still waiting as data URLs (taken offline)
         let currentForm = form;
+        let payloadForm = form;
         const pendingUrls = [
             ...(currentForm.kitchenPhotoUrls || []),
             ...(currentForm.bathroomPhotoUrls || []),
@@ -615,33 +753,52 @@ function StartListForm({
 
         if (pendingUrls.length > 0) {
             toast({ title: t('controlCards.uploadingPhotos'), description: t('controlCards.syncingPhotos', { count: pendingUrls.length }) });
-            const results = await Promise.all(
-                pendingUrls.map(dataUrl =>
-                    uploadControlCardPhotoAction(dataUrl, 'photo.jpg', 'image/jpeg')
-                        .then(res => ({ dataUrl, serverUrl: res.url ?? null, error: res.error }))
-                        .catch(e => ({ dataUrl, serverUrl: null, error: e?.message }))
-                )
-            );
+            const fieldOf = (u: string): StartListPhotoField =>
+                STARTLIST_PHOTO_FIELDS.find(f => (currentForm[f] || []).includes(u)) || 'kitchenPhotoUrls';
+            const results = await Promise.all(pendingUrls.map(async dataUrl => {
+                let pendingId = pendingIdsRef.current.get(dataUrl);
+                if (!pendingId) {
+                    // Zdjęcie tylko w RAM (np. dodane bez IndexedDB) — dopisz do bufora teraz
+                    pendingId = newPendingPhotoId();
+                    pendingIdsRef.current.set(dataUrl, pendingId);
+                    await persistPendingPhoto({ id: pendingId, dataUrl, fileName: 'photo.jpg', context: 'start-list', contextId: address.id, field: fieldOf(dataUrl) });
+                }
+                const serverUrl = await uploadViaOfflineStore(pendingId, dataUrl);
+                return { dataUrl, pendingId, serverUrl };
+            }));
+            const succeeded = new Map(results.filter(r => r.serverUrl).map(r => [r.dataUrl, r.serverUrl!]));
+            succeeded.forEach((_, k) => pendingIdsRef.current.delete(k));
             const failed = results.filter(r => !r.serverUrl);
-            if (failed.length > 0) {
-                const errorMsg = failed.find(f => f.error)?.error || t('controlCards.noNetworkDesc', { count: failed.length });
-                toast({ title: t('controlCards.uploadError'), description: errorMsg, variant: 'destructive' });
-                return;
-            }
-            const urlMap = new Map(results.map(r => [r.dataUrl, r.serverUrl!]));
-            const rep = (u: string) => urlMap.get(u) ?? u;
-            currentForm = {
-                ...currentForm,
-                kitchenPhotoUrls: (currentForm.kitchenPhotoUrls || []).map(rep),
-                bathroomPhotoUrls: (currentForm.bathroomPhotoUrls || []).map(rep),
-                roomsPhotoUrls: (currentForm.roomsPhotoUrls || []).map(rep),
-                hallwayPhotoUrls: (currentForm.hallwayPhotoUrls || []).map(rep),
-            };
+            const repDisplay = (u: string) => succeeded.get(u) ?? u;
+            const mapArrays = (f: StartList, rep: (u: string) => string): StartList => ({
+                ...f,
+                kitchenPhotoUrls: (f.kitchenPhotoUrls || []).map(rep),
+                bathroomPhotoUrls: (f.bathroomPhotoUrls || []).map(rep),
+                roomsPhotoUrls: (f.roomsPhotoUrls || []).map(rep),
+                hallwayPhotoUrls: (f.hallwayPhotoUrls || []).map(rep),
+            });
+            currentForm = mapArrays(currentForm, repDisplay);
             setForm(currentForm);
+            if (failed.length > 0) {
+                // Brak sieci dla zdjęć — NIE blokuj zapisu. Do Sheets idą placeholdery
+                // "pending_*" (nigdy base64 — limit komórki 50k znaków), sync zrobi hook.
+                const placeholderOf = new Map(failed.map(f => [f.dataUrl, f.pendingId]));
+                payloadForm = mapArrays(currentForm, (u) => placeholderOf.get(u) ?? u);
+                toast({ title: t('controlCards.savedPendingPhotos'), description: t('controlCards.savedPendingPhotosDesc', { count: failed.length }) });
+            } else {
+                payloadForm = currentForm;
+            }
         }
 
+        const hasPendingPhotos = [
+            ...(payloadForm.kitchenPhotoUrls || []),
+            ...(payloadForm.bathroomPhotoUrls || []),
+            ...(payloadForm.roomsPhotoUrls || []),
+            ...(payloadForm.hallwayPhotoUrls || []),
+        ].some(isPendingPlaceholder);
+
         startSaving(async () => {
-            const payload = { ...currentForm, updatedBy: currentUser.name, updatedById: currentUser.uid };
+            const payload = { ...payloadForm, hasPendingPhotos, updatedBy: currentUser.name, updatedById: currentUser.uid };
             const res = await saveStartListAction(payload);
             if (res.success) {
                 const saved: StartList = { ...payload, updatedAt: new Date().toISOString() };
@@ -650,6 +807,10 @@ function StartListForm({
                 window.dispatchEvent(new Event('control-cards-updated'));
             } else {
                 toast({ title: t('controlCards.saveError'), description: res.error, variant: 'destructive' });
+                if (pendingUrls.length > 0) {
+                    // Całkowity brak sieci — zapis karty się nie udał, ale zdjęcia są bezpieczne w buforze
+                    toast({ title: t('controlCards.offlinePhotosSafe'), description: t('controlCards.offlinePhotosSafeDesc') });
+                }
             }
         });
     };
@@ -838,6 +999,54 @@ function ControlCardDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, existingCard, address, slComplete, focusCommentId]);
 
+    // dataUrl → pendingId; pozwala przy zapisie podmienić data URL na placeholder zamiast base64
+    const pendingIdsRef = React.useRef(new Map<string, string>());
+    const offlineContextId = existingCard ? existingCard.id : unboundContextId(address.id, selectedMonth);
+
+    // Rehydratacja zdjęć z bufora offline po otwarciu dialogu
+    React.useEffect(() => {
+        if (!open) return;
+        let cancelled = false;
+        (async () => {
+            const pend = await loadPendingPhotosForContext('control-card', offlineContextId, pendingIdsRef.current);
+            if (cancelled || pend.length === 0) return;
+            setForm(prev => {
+                let next = { ...prev };
+                for (const p of pend) {
+                    if (p.field === 'kitchenPhotoUrls' || p.field === 'bathroomPhotoUrls' || p.field === 'meterPhotoUrls') {
+                        next = { ...next, [p.field]: mergePendingIntoArray(next[p.field] as string[], p.id, p.dataUrl) };
+                    } else if (p.field.startsWith('room:')) {
+                        const roomId = p.field.slice('room:'.length);
+                        next = {
+                            ...next,
+                            roomRatings: next.roomRatings.map(r =>
+                                r.roomId === roomId ? { ...r, photoUrls: mergePendingIntoArray(r.photoUrls, p.id, p.dataUrl) } : r
+                            ),
+                        };
+                    } else if (p.field.startsWith('comment:')) {
+                        const commentId = p.field.slice('comment:'.length);
+                        next = {
+                            ...next,
+                            comments: next.comments.map(c =>
+                                c.id === commentId ? { ...c, photoUrls: mergePendingIntoArray(c.photoUrls, p.id, p.dataUrl) } : c
+                            ),
+                        };
+                    }
+                }
+                return next;
+            });
+        })();
+        return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, offlineContextId]);
+
+    // Usuwa zdjęcie z bufora offline, żeby rehydratacja go nie wskrzesiła
+    const forgetPendingPhoto = (url: string | undefined) => {
+        if (!url) return;
+        const pid = pendingIdsRef.current.get(url) || (isPendingPlaceholder(url) ? url : null);
+        if (pid) { removePendingPhoto(pid).catch(() => {}); pendingIdsRef.current.delete(url); }
+    };
+
     const handleTabChange = (val: string) => {
         if (val === 'control' && !slComplete && !currentUser.isAdmin) return;
         setActiveTab(val as 'startlist' | 'control');
@@ -903,20 +1112,26 @@ function ControlCardDialog({
         });
     };
 
-    // Generic photo upload handler — tries server upload; on failure (no network) falls back to data URL
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const uploadPhotos = async (files: FileList, key: 'kitchen' | 'bathroom' | string): Promise<string[]> => {
+    // Generic photo upload handler — persists to offline buffer, tries server upload;
+    // on failure (no network) falls back to data URL (photo stays safe in IndexedDB)
+    const uploadPhotos = async (files: FileList, key: 'kitchen' | 'bathroom' | 'meter' | string): Promise<string[]> => {
         const isImg = (f: File) => f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(f.name) || f.type === '';
+        const sectionFields: Record<string, string> = { kitchen: 'kitchenPhotoUrls', bathroom: 'bathroomPhotoUrls', meter: 'meterPhotoUrls' };
+        const field = sectionFields[key] || `room:${key}`;
         const results: string[] = [];
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             if (!isImg(file)) continue;
             const dataUrl = await compressImage(file);
-            try {
-                const res = await uploadControlCardPhotoAction(dataUrl, file.name || 'photo.jpg', 'image/jpeg');
-                results.push(res.url ? res.url : dataUrl); // server URL or data URL fallback
-            } catch {
-                results.push(dataUrl); // No network — store locally, upload on save
+            const pendingId = newPendingPhotoId();
+            pendingIdsRef.current.set(dataUrl, pendingId);
+            await persistPendingPhoto({ id: pendingId, dataUrl, fileName: file.name || 'photo.jpg', context: 'control-card', contextId: offlineContextId, field });
+            const serverUrl = await uploadViaOfflineStore(pendingId, dataUrl, file.name || 'photo.jpg');
+            if (serverUrl) {
+                pendingIdsRef.current.delete(dataUrl);
+                results.push(serverUrl);
+            } else {
+                results.push(dataUrl); // No network — photo persisted in IndexedDB, sync later
             }
         }
         return results;
@@ -946,6 +1161,7 @@ function ControlCardDialog({
     };
 
     const handleRemovePhoto = (roomId: string, indexToRemove: number) => {
+        forgetPendingPhoto(form.roomRatings.find(r => r.roomId === roomId)?.photoUrls?.[indexToRemove]);
         setForm(prev => ({
             ...prev,
             roomRatings: prev.roomRatings.map(r =>
@@ -975,8 +1191,16 @@ function ControlCardDialog({
                 if (!file.type.startsWith('image/') && !/\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(file.name)) continue;
                 const dataUrl = await compressImage(file);
                 dataUrls.push(dataUrl);
-                uploadControlCardPhotoAction(dataUrl, file.name || 'photo.jpg', 'image/jpeg')
-                    .then(res => { if (res.url) replaceCommentPhotoUrl(commentId, dataUrl, res.url); })
+                const pendingId = newPendingPhotoId();
+                pendingIdsRef.current.set(dataUrl, pendingId);
+                await persistPendingPhoto({ id: pendingId, dataUrl, fileName: file.name || 'photo.jpg', context: 'control-card', contextId: offlineContextId, field: `comment:${commentId}` });
+                uploadViaOfflineStore(pendingId, dataUrl, file.name || 'photo.jpg')
+                    .then(url => {
+                        if (url) {
+                            replaceCommentPhotoUrl(commentId, dataUrl, url);
+                            pendingIdsRef.current.delete(dataUrl);
+                        }
+                    })
                     .catch(() => {});
             }
             if (dataUrls.length) {
@@ -1000,6 +1224,7 @@ function ControlCardDialog({
     };
 
     const handleRemoveCommentPhoto = (commentId: string, idx: number) => {
+        forgetPendingPhoto(form.comments.find(c => c.id === commentId)?.photoUrls?.[idx]);
         setForm(prev => ({
             ...prev,
             comments: prev.comments.map(c =>
@@ -1053,6 +1278,7 @@ function ControlCardDialog({
             meter: 'meterPhotoUrls'
         };
         const field = fieldMapping[section];
+        forgetPendingPhoto(((form[field] as string[]) || [])[idx]);
         setForm(prev => ({ ...prev, [field]: ((prev[field] as string[]) || []).filter((_, i) => i !== idx) }));
     };
 
@@ -1107,56 +1333,88 @@ function ControlCardDialog({
     const handleSave = async () => {
         // Flush any photos still stored as data URLs (taken offline)
         let currentForm = form;
-        const pendingUrls = [
-            ...currentForm.meterPhotoUrls,
-            ...currentForm.kitchenPhotoUrls,
-            ...currentForm.bathroomPhotoUrls,
-            ...currentForm.roomRatings.flatMap(r => r.photoUrls || []),
+        let payloadForm = form;
+        const collectLocal = (f: FormState) => [
+            ...f.meterPhotoUrls,
+            ...f.kitchenPhotoUrls,
+            ...f.bathroomPhotoUrls,
+            ...f.roomRatings.flatMap(r => r.photoUrls || []),
+            ...f.comments.flatMap(c => c.photoUrls || []),
         ].filter((u): u is string => typeof u === 'string' && u.startsWith('data:'));
+        const pendingUrls = collectLocal(currentForm);
 
         if (pendingUrls.length > 0) {
             toast({ title: t('controlCards.uploadingPhotos'), description: t('controlCards.syncingPhotos', { count: pendingUrls.length }) });
-            const results = await Promise.all(
-                pendingUrls.map(dataUrl =>
-                    uploadControlCardPhotoAction(dataUrl, 'photo.jpg', 'image/jpeg')
-                        .then(res => ({ dataUrl, serverUrl: res.url ?? null, error: res.error }))
-                        .catch(e => ({ dataUrl, serverUrl: null, error: e?.message }))
-                )
-            );
-            const failed = results.filter(r => !r.serverUrl);
-            if (failed.length > 0) {
-                const errorMsg = failed.find(f => f.error)?.error || t('controlCards.noNetworkDesc', { count: failed.length });
-                toast({ title: t('controlCards.uploadError'), description: errorMsg, variant: 'destructive' });
-                return;
-            }
-            const urlMap = new Map(results.map(r => [r.dataUrl, r.serverUrl!]));
-            const rep = (u: string) => urlMap.get(u) ?? u;
-            currentForm = {
-                ...currentForm,
-                meterPhotoUrls: currentForm.meterPhotoUrls.map(rep),
-                kitchenPhotoUrls: currentForm.kitchenPhotoUrls.map(rep),
-                bathroomPhotoUrls: currentForm.bathroomPhotoUrls.map(rep),
-                roomRatings: currentForm.roomRatings.map(r => ({ ...r, photoUrls: (r.photoUrls || []).map(rep) })),
+            const fieldOf = (u: string): string => {
+                if (currentForm.kitchenPhotoUrls.includes(u)) return 'kitchenPhotoUrls';
+                if (currentForm.bathroomPhotoUrls.includes(u)) return 'bathroomPhotoUrls';
+                if (currentForm.meterPhotoUrls.includes(u)) return 'meterPhotoUrls';
+                const room = currentForm.roomRatings.find(r => (r.photoUrls || []).includes(u));
+                if (room) return `room:${room.roomId}`;
+                const comment = currentForm.comments.find(c => (c.photoUrls || []).includes(u));
+                return comment ? `comment:${comment.id}` : 'meterPhotoUrls';
             };
+            const results = await Promise.all(pendingUrls.map(async dataUrl => {
+                let pendingId = pendingIdsRef.current.get(dataUrl);
+                if (!pendingId) {
+                    // Zdjęcie tylko w RAM (np. dodane bez IndexedDB) — dopisz do bufora teraz
+                    pendingId = newPendingPhotoId();
+                    pendingIdsRef.current.set(dataUrl, pendingId);
+                    await persistPendingPhoto({ id: pendingId, dataUrl, fileName: 'photo.jpg', context: 'control-card', contextId: offlineContextId, field: fieldOf(dataUrl) });
+                }
+                const serverUrl = await uploadViaOfflineStore(pendingId, dataUrl);
+                return { dataUrl, pendingId, serverUrl };
+            }));
+            const succeeded = new Map(results.filter(r => r.serverUrl).map(r => [r.dataUrl, r.serverUrl!]));
+            succeeded.forEach((_, k) => pendingIdsRef.current.delete(k));
+            const failed = results.filter(r => !r.serverUrl);
+            const mapForm = (f: FormState, rep: (u: string) => string): FormState => ({
+                ...f,
+                meterPhotoUrls: f.meterPhotoUrls.map(rep),
+                kitchenPhotoUrls: f.kitchenPhotoUrls.map(rep),
+                bathroomPhotoUrls: f.bathroomPhotoUrls.map(rep),
+                roomRatings: f.roomRatings.map(r => ({ ...r, photoUrls: (r.photoUrls || []).map(rep) })),
+                comments: f.comments.map(c => ({ ...c, photoUrls: (c.photoUrls || []).map(rep) })),
+            });
+            currentForm = mapForm(currentForm, (u) => succeeded.get(u) ?? u);
             setForm(currentForm);
+            if (failed.length > 0) {
+                // Brak sieci dla zdjęć — NIE blokuj zapisu karty. Do Sheets idą placeholdery
+                // "pending_*" (nigdy base64 — limit komórki 50k znaków), sync zrobi hook.
+                const placeholderOf = new Map(failed.map(f => [f.dataUrl, f.pendingId]));
+                payloadForm = mapForm(currentForm, (u) => placeholderOf.get(u) ?? u);
+                toast({ title: t('controlCards.savedPendingPhotos'), description: t('controlCards.savedPendingPhotosDesc', { count: failed.length }) });
+            } else {
+                payloadForm = currentForm;
+            }
         }
+
+        const hasPendingPhotos = [
+            ...payloadForm.meterPhotoUrls,
+            ...payloadForm.kitchenPhotoUrls,
+            ...payloadForm.bathroomPhotoUrls,
+            ...payloadForm.roomRatings.flatMap(r => r.photoUrls || []),
+            ...payloadForm.comments.flatMap(c => c.photoUrls || []),
+        ].some(isPendingPlaceholder);
 
         if (existingCard) {
             // Optimistic update — zamknij dialog i zaktualizuj listę natychmiast
-            const optimisticCard = { ...existingCard, ...currentForm, fillDate: new Date().toISOString().slice(0, 10) };
+            const optimisticCard = { ...existingCard, ...payloadForm, hasPendingPhotos, fillDate: new Date().toISOString().slice(0, 10) };
             onSaved(optimisticCard);
             onClose();
-            editControlCardAction(existingCard.id, currentForm).then(result => {
+            editControlCardAction(existingCard.id, { ...payloadForm, hasPendingPhotos }).then(result => {
                 if (result.success) {
                     toast({ title: t('controlCards.updatedSuccess'), description: t('controlCards.savedSuccessDesc', { name: address.name }) });
                     window.dispatchEvent(new Event('control-cards-updated'));
                 } else {
                     onSaved(existingCard); // revert
                     toast({ title: t('controlCards.saveError'), description: result.error, variant: 'destructive' });
+                    if (hasPendingPhotos) toast({ title: t('controlCards.offlinePhotosSafe'), description: t('controlCards.offlinePhotosSafeDesc') });
                 }
             }).catch(() => {
                 onSaved(existingCard); // revert
                 toast({ title: t('controlCards.saveError'), description: t('controlCards.saveCardFailed'), variant: 'destructive' });
+                if (hasPendingPhotos) toast({ title: t('controlCards.offlinePhotosSafe'), description: t('controlCards.offlinePhotosSafeDesc') });
             });
         } else {
             startTransition(async () => {
@@ -1167,16 +1425,23 @@ function ControlCardDialog({
                     coordinatorName: currentUser.name,
                     controlMonth: selectedMonth,
                     fillDate: new Date().toISOString().slice(0, 10),
-                    ...currentForm,
+                    ...payloadForm,
+                    hasPendingPhotos,
                 };
                 const result = await saveControlCardAction(cardData);
                 if (result.success && result.id) {
+                    // Powiąż pending zdjęcia z realnym ID karty — hook sync podmieni placeholdery w Sheets
+                    bindContext('control-card', unboundContextId(address.id, selectedMonth), result.id).catch(() => {});
                     toast({ title: t('controlCards.savedSuccess'), description: t('controlCards.savedSuccessDesc', { name: address.name }) });
                     onSaved({ id: result.id, ...cardData });
                     onClose();
                     window.dispatchEvent(new Event('control-cards-updated'));
                 } else {
                     toast({ title: t('controlCards.saveError'), description: result.error, variant: 'destructive' });
+                    if (pendingUrls.length > 0) {
+                        // Całkowity brak sieci — zapis karty się nie udał, ale zdjęcia są bezpieczne w buforze
+                        toast({ title: t('controlCards.offlinePhotosSafe'), description: t('controlCards.offlinePhotosSafeDesc') });
+                    }
                 }
             });
         }
@@ -1649,6 +1914,11 @@ function AddressRow({ address, card, onClick }: { address: Address; card: Contro
                     {hasIssue && (
                         <span className="flex items-center gap-0.5 text-[10px] text-red-500">
                             <Wrench className="w-2.5 h-2.5" /> {t('controlCards.defect')}
+                        </span>
+                    )}
+                    {card?.hasPendingPhotos && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-amber-600" title={t('controlCards.pendingSyncBadge')}>
+                            <CloudOff className="w-2.5 h-2.5" /> {t('controlCards.pendingSyncBadge')}
                         </span>
                     )}
                     {address.noMetersRequired && (

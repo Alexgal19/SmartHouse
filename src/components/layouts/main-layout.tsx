@@ -41,6 +41,7 @@ import {
 import { getSettings, getEmployees, getNonEmployees, getBokResidents, getNotifications, getRawAddressHistory, getOdbiorEntries } from '@/lib/sheets';
 import { logout } from '../../lib/auth';
 import { useToast } from '../../hooks/use-toast';
+import { useOfflinePhotoSync } from '../../hooks/use-offline-photo-sync';
 import { AddEmployeeForm, type EmployeeFormData } from '@/components/forms/add-employee-form';
 import { AddNonEmployeeForm } from '@/components/forms/add-non-employee-form';
 import { AddBokResidentForm } from '@/components/forms/add-bok-resident-form';
@@ -154,6 +155,9 @@ export default function MainLayout({
     const router = useRouter();
     const routerRef = useRef(router);
     const searchParams = useSearchParams();
+
+    // Synchronizacja zdjęć z bufora offline (IndexedDB) po odzyskaniu sieci / powrocie do appki
+    useOfflinePhotoSync();
 
     const navItems = useMemo(() => [
         { view: 'dashboard', icon: Home, label: t('nav.dashboard') },

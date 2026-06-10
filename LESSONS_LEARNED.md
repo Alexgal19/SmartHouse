@@ -31,6 +31,7 @@
 | 20 | Dokumentacja / MD | Pliki markdown (.md) muszą mieć puste linie wokół nagłówków, list i kodów (unikaj MD022/MD031/MD032) oraz max 1 pustą linię z rzędu (MD012). |
 | 21 | React / State — Race Condition | `refreshData` (co 30s) nadpisuje `rawSettings` danymi z Sheets **przed** utrwaleniem zapisu → odwraca optimistic update. Użyj `settingsLastUpdatedRef` + guard 15s w `refreshData`. Identyczny wzorzec jak `deletedNotificationIds` dla powiadomień. |
 | 22 | Powiadomienia / Backend | `createNotification`: `if (!recipient) return` blokowało powiadomienia dla adminów gdy pracownik nie miał `coordinatorId`. Przy zwolnieniu (`isDismissal`) powiadomienie MUSI dotrzeć do adminów niezależnie od stanu koordynatora. Oblicz `isDismissal` PRZED early-return. Drugi bug: `statusChange.newValue === 'dismissed'` zawsze fałsz — VALUE_LABELS tłumaczy `'dismissed'` → `'Zwolniony'`. Sprawdzaj obie wartości. |
+| 23 | Testy / IndexedDB | W jest+jsdom: `Blob` nie jest klonowalny przez fake-indexeddb, brakuje `structuredClone` i `blob.arrayBuffer()`. W IndexedDB przechowuj `ArrayBuffer` (nie Blob), w testach polyfilluj `structuredClone` przez `v8.serialize/deserialize`, w kodzie produkcyjnym fallback `FileReader.readAsArrayBuffer`. |
 
 ### React / UI — Znikające stany w formularzach (Oszukiwanie referencji)
 
