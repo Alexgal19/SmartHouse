@@ -53,3 +53,5 @@ test-*.tsx
 
 # worktrees
 /.worktrees/
+
+.early.coverage

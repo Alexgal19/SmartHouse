@@ -6,19 +6,34 @@
  * but a concurrent serverless instance or cached GET request returns status: 'active'.
  */
 
-const deletedEntityIds = new Set<string>();
+const deletedEntityIds = new Map<string, number>();
 const editedEntityIds = new Map<string, number>();
 
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+function cleanupOldTracks() {
+    const cutoff = Date.now() - CLEANUP_INTERVAL_MS;
+    for (const [id, time] of editedEntityIds) {
+        if (time < cutoff) editedEntityIds.delete(id);
+    }
+    for (const [id, time] of deletedEntityIds) {
+        if (time < cutoff) deletedEntityIds.delete(id);
+    }
+}
+
 export function trackDeletedEntityId(id: string | string[]) {
+    const now = Date.now();
+    cleanupOldTracks();
     if (Array.isArray(id)) {
-        id.forEach(i => deletedEntityIds.add(i));
+        id.forEach(i => deletedEntityIds.set(i, now));
     } else {
-        deletedEntityIds.add(id);
+        deletedEntityIds.set(id, now);
     }
 }
 
 export function trackEditedEntityId(id: string | string[]) {
     const now = Date.now();
+    cleanupOldTracks();
     if (Array.isArray(id)) {
         id.forEach(i => editedEntityIds.set(i, now));
     } else {
@@ -27,6 +42,7 @@ export function trackEditedEntityId(id: string | string[]) {
 }
 
 export function mergeWithOptimistic<T extends { id: string }>(current: T[] | null, fresh: T[]): T[] {
+    cleanupOldTracks();
     const filteredFresh = fresh.filter(item => !deletedEntityIds.has(item.id));
     if (!current || current.length === 0) return filteredFresh;
     const freshIds = new Set(filteredFresh.map((item) => item.id));

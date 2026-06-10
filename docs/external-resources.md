@@ -241,3 +241,45 @@ Gdy zdecydujemy o produkcyjnym monitoringu błędów:
 - [bytefer/awesome-shadcn-ui](https://github.com/bytefer/awesome-shadcn-ui) — shadcn/ui ecosystem
 - [bytefer/awesome-nextjs](https://github.com/bytefer/awesome-nextjs) — Next.js ecosystem
 - [Top 50 Claude Skills (2026)](https://www.blockchain-council.org/claude-ai/top-50-claude-skills-and-github-repos/) — ranking 2026
+
+---
+
+## GitHub Skills — oficjalne kursy interaktywne
+
+> Kuratorska lista z [github.com/skills](https://github.com/skills) — interaktywne ćwiczenia wykonywane bezpośrednio w Issues/Actions na GitHub.
+> **Data aktualizacji:** 2026-06-10
+
+### 🤖 AI / Copilot
+
+| Kurs | Repo | Opis | ⭐ |
+|------|------|------|-----|
+| **getting-started-with-github-copilot** | [skills/getting-started-with-github-copilot](https://github.com/skills/getting-started-with-github-copilot) | Podstawy GitHub Copilot — AI pair programmer | 630 |
+| **integrate-mcp-with-copilot** | [skills/integrate-mcp-with-copilot](https://github.com/skills/integrate-mcp-with-copilot) | MCP Servers z GitHub Copilot | 216 |
+| **expand-your-team-with-copilot** | [skills/expand-your-team-with-copilot](https://github.com/skills/expand-your-team-with-copilot) | Copilot Coding Agent — rozwiązywanie issue bez IDE | 154 |
+| **customize-your-github-copilot-experience** | [skills/customize-your-github-copilot-experience](https://github.com/skills/customize-your-github-copilot-experience) | Custom instructions, prompts, chat modes | 63 |
+| **scale-institutional-knowledge-using-copilot-spaces** | [skills/scale-institutional-knowledge-using-copilot-spaces](https://github.com/skills/scale-institutional-knowledge-using-copilot-spaces) | Copilot Spaces dla organizacji | 61 |
+
+### 🔧 GitHub Actions / CI-CD
+
+| Kurs | Repo | Opis | ⭐ |
+|------|------|------|-----|
+| **reusable-workflows** | [skills/reusable-workflows](https://github.com/skills/reusable-workflows) | Reusable workflows — wielokrotne użycie | 103 |
+| **workflow-artifacts** | [skills/workflow-artifacts](https://github.com/skills/workflow-artifacts) | Upload, preview, download artifacts | 3 |
+
+### 🔒 Bezpieczeństwo
+
+| Kurs | Repo | Opis | ⭐ |
+|------|------|------|-----|
+| **secure-code-game** | [skills/secure-code-game](https://github.com/skills/secure-code-game) | Nauka bezpiecznego kodowania przez grę | 2763 |
+| **secure-repository-supply-chain** | [skills/secure-repository-supply-chain](https://github.com/skills/secure-repository-supply-chain) | Supply chain security, dependencies, vulnerabilities | 200 |
+
+### 🤖 Agentic Workflows / AI Agents
+
+| Kurs | Repo | Opis | ⭐ |
+|------|------|------|-----|
+| **agent-orchestration-build-your-ai-dream-team** | [skills/agent-orchestration-build-your-ai-dream-team](https://github.com/skills/agent-orchestration-build-your-ai-dream-team) | Agent Orchestration przez CLI | 18 |
+| **agentic-workflows-that-read-the-room** | [skills/agentic-workflows-that-read-the-room](https://github.com/skills/agentic-workflows-that-read-the-room) | Wprowadzenie do Agentic Workflows | 15 |
+
+### Pełny katalog
+
+Wszystkie 50+ kursów: [github.com/orgs/skills/repositories](https://github.com/orgs/skills/repositories)

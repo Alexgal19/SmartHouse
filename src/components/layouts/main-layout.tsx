@@ -47,6 +47,7 @@ import { AddBokResidentForm } from '@/components/forms/add-bok-resident-form';
 import { type BokResidentFormData } from '@/components/forms/edit-bok-resident-form';
 import { cn } from '../../lib/utils';
 import { AddressForm } from '@/components/forms/address-form';
+import { useOfflinePhotoSync } from '@/hooks/use-offline-photo-sync';
 import { ModernHouseIcon } from '../icons/modern-house-icon';
 import { differenceInDays, parseISO, format } from 'date-fns';
 
@@ -154,6 +155,8 @@ export default function MainLayout({
     const router = useRouter();
     const routerRef = useRef(router);
     const searchParams = useSearchParams();
+
+    useOfflinePhotoSync();
 
     const navItems = useMemo(() => [
         { view: 'dashboard', icon: Home, label: t('nav.dashboard') },
@@ -586,7 +589,7 @@ export default function MainLayout({
                 try {
                     const { getCandidateDemandsAction } = await import('@/lib/actions');
                     const demands = await getCandidateDemandsAction();
-                    setRawDemands(demands);
+                    setRawDemands((prev) => mergeWithOptimistic(prev, demands));
                     setPendingDemandsCount(demands.filter(d => d.status === 'pending').length);
                 } catch {
                     // ignore

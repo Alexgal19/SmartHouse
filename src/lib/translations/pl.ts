@@ -1140,4 +1140,6 @@ export const pl = {
     'form.selectRoom': 'Wybierz pokój',
     'header.language': 'Język',
     'toast.importErrors': 'Błędy importu',
+    'offlineSync.syncComplete': 'Synchronizacja zakończona',
+    'offlineSync.syncCompleteDesc': 'Pomyślnie zsynchronizowano {count} zdjęć offline.',
 } satisfies Record<string, string>;

@@ -58,7 +58,7 @@ test.describe.serial('Push Notification & Redirect Flow', () => {
 
     // ── 2. Nawigacja z błędnym demandId — nie powinno crashować ──
     test('Rekrutacja — demandId nieistniejącego demandu nie otwiera dialogu', async () => {
-        await page.goto(`${dashboardUrl('recruitment')}&demandId=fake-demand-123456`);
+        await page.goto(`${dashboardUrl('recruitment')}?demandId=fake-demand-123456`);
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(3000);
 
@@ -74,7 +74,7 @@ test.describe.serial('Push Notification & Redirect Flow', () => {
     // ── 3. Nawigacja z demandId dla delivered/expired — nie otwiera dialogu ──
     test('Rekrutacja — demandId delivered/expired nie otwiera dialogu', async () => {
         // Nawigujemy z losowym ID — dla delivered/expired dialog nie powinien się otworzyć
-        await page.goto(`${dashboardUrl('recruitment')}&demandId=delivered-demand-999`);
+        await page.goto(`${dashboardUrl('recruitment')}?demandId=delivered-demand-999`);
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(3000);
 

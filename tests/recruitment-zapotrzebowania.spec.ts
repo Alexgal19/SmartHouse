@@ -128,26 +128,14 @@ test.describe.serial('Rekrutacja i Zapotrzebowania — Przepływ E2E', () => {
                 if (await moreBtn.isVisible().catch(() => false)) {
                     await moreBtn.click();
                     const dropdownDeleteBtn = page.getByRole('menuitem', { name: /Usuń/i }).first();
-                    await dropdownDeleteBtn.click();
+                    await dropdownDeleteBtn.waitFor({ state: 'visible', timeout: 5000 });
+                    await dropdownDeleteBtn.click({ force: true });
                 }
             }
-
-            // W widoku Rekrutacji usunięcie z menu "Więcej" może od razu uruchamiać proces (toast) 
-            // lub otwierać dialog. Sprawdźmy czy okno potwierdzenia w ogóle się pojawia.
-            const confirmBtn = page.getByRole('button', { name: /Tak|Usuń|Potwierdź/i }).filter({ hasNot: page.getByRole('menuitem') }).first();
-            if (await confirmBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-                await confirmBtn.click();
-            }
-
-            // Google Sheets API może zająć chwilę. Czekamy, a jeśli wiersz nie zniknie, próbujemy odświeżyć stronę.
-            await page.waitForTimeout(4000);
-            if (await row.isVisible().catch(() => false)) {
-                await page.reload();
-                await page.waitForLoadState('networkidle');
-                await page.waitForTimeout(3000);
-            }
-            
-            await expect(row).not.toBeVisible({ timeout: 10000 });
+            // Usunięcie wyzwala akcję backendową. Czekamy aż wiersz sam zniknie z UI, 
+            // co w przypadku Sheets może potrwać nawet 15 sekund. Nie używamy reload(), 
+            // żeby nie anulować trwającego w tle żądania HTTP.
+            await expect(row).not.toBeVisible({ timeout: 20000 });
         }
     });
 });

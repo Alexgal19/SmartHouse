@@ -623,20 +623,48 @@ function StartListForm({
                 )
             );
             const failed = results.filter(r => !r.serverUrl);
-            if (failed.length > 0) {
-                const errorMsg = failed.find(f => f.error)?.error || t('controlCards.noNetworkDesc', { count: failed.length });
-                toast({ title: t('controlCards.uploadError'), description: errorMsg, variant: 'destructive' });
-                return;
-            }
             const urlMap = new Map(results.map(r => [r.dataUrl, r.serverUrl!]));
-            const rep = (u: string) => urlMap.get(u) ?? u;
-            currentForm = {
-                ...currentForm,
-                kitchenPhotoUrls: (currentForm.kitchenPhotoUrls || []).map(rep),
-                bathroomPhotoUrls: (currentForm.bathroomPhotoUrls || []).map(rep),
-                roomsPhotoUrls: (currentForm.roomsPhotoUrls || []).map(rep),
-                hallwayPhotoUrls: (currentForm.hallwayPhotoUrls || []).map(rep),
-            };
+            
+            if (failed.length > 0) {
+                toast({
+                    title: t('controlCards.offlineTitle', 'Offline'),
+                    description: t('controlCards.offlineDesc', `Karta zapisana offline. ${failed.length} zdjęć czeka na połączenie.`),
+                });
+                currentForm.hasPendingPhotos = true;
+                
+                import('@/lib/offline-photo-store').then(({ addPendingPhoto }) => {
+                    failed.forEach(f => {
+                        addPendingPhoto({
+                            id: `pending_${crypto.randomUUID()}`,
+                            base64: f.dataUrl,
+                            fileName: 'offline.jpg',
+                            mimeType: 'image/jpeg',
+                            context: 'start-list',
+                            contextId: address.id,
+                            field: 'photo',
+                            status: 'pending'
+                        }).catch(console.error);
+                    });
+                }).catch(console.error);
+
+                const repStrip = (u: string) => urlMap.get(u) || (u.startsWith('data:') ? 'OFFLINE_PENDING' : u);
+                currentForm = {
+                    ...currentForm,
+                    kitchenPhotoUrls: (currentForm.kitchenPhotoUrls || []).map(repStrip).filter(u => u !== 'OFFLINE_PENDING'),
+                    bathroomPhotoUrls: (currentForm.bathroomPhotoUrls || []).map(repStrip).filter(u => u !== 'OFFLINE_PENDING'),
+                    roomsPhotoUrls: (currentForm.roomsPhotoUrls || []).map(repStrip).filter(u => u !== 'OFFLINE_PENDING'),
+                    hallwayPhotoUrls: (currentForm.hallwayPhotoUrls || []).map(repStrip).filter(u => u !== 'OFFLINE_PENDING'),
+                };
+            } else {
+                const rep = (u: string) => urlMap.get(u) ?? u;
+                currentForm = {
+                    ...currentForm,
+                    kitchenPhotoUrls: (currentForm.kitchenPhotoUrls || []).map(rep),
+                    bathroomPhotoUrls: (currentForm.bathroomPhotoUrls || []).map(rep),
+                    roomsPhotoUrls: (currentForm.roomsPhotoUrls || []).map(rep),
+                    hallwayPhotoUrls: (currentForm.hallwayPhotoUrls || []).map(rep),
+                };
+            }
             setForm(currentForm);
         }
 
@@ -1124,20 +1152,48 @@ function ControlCardDialog({
                 )
             );
             const failed = results.filter(r => !r.serverUrl);
-            if (failed.length > 0) {
-                const errorMsg = failed.find(f => f.error)?.error || t('controlCards.noNetworkDesc', { count: failed.length });
-                toast({ title: t('controlCards.uploadError'), description: errorMsg, variant: 'destructive' });
-                return;
-            }
             const urlMap = new Map(results.map(r => [r.dataUrl, r.serverUrl!]));
-            const rep = (u: string) => urlMap.get(u) ?? u;
-            currentForm = {
-                ...currentForm,
-                meterPhotoUrls: currentForm.meterPhotoUrls.map(rep),
-                kitchenPhotoUrls: currentForm.kitchenPhotoUrls.map(rep),
-                bathroomPhotoUrls: currentForm.bathroomPhotoUrls.map(rep),
-                roomRatings: currentForm.roomRatings.map(r => ({ ...r, photoUrls: (r.photoUrls || []).map(rep) })),
-            };
+            
+            if (failed.length > 0) {
+                toast({
+                    title: t('controlCards.offlineTitle', 'Offline'),
+                    description: t('controlCards.offlineDesc', `Karta zapisana offline. ${failed.length} zdjęć czeka na połączenie.`),
+                });
+                currentForm.hasPendingPhotos = true;
+                
+                import('@/lib/offline-photo-store').then(({ addPendingPhoto }) => {
+                    failed.forEach(f => {
+                        addPendingPhoto({
+                            id: `pending_${crypto.randomUUID()}`,
+                            base64: f.dataUrl,
+                            fileName: 'offline.jpg',
+                            mimeType: 'image/jpeg',
+                            context: 'control-card',
+                            contextId: existingCard?.id || address.id,
+                            field: 'photo',
+                            status: 'pending'
+                        }).catch(console.error);
+                    });
+                }).catch(console.error);
+
+                const repStrip = (u: string) => urlMap.get(u) || (u.startsWith('data:') ? 'OFFLINE_PENDING' : u);
+                currentForm = {
+                    ...currentForm,
+                    meterPhotoUrls: currentForm.meterPhotoUrls.map(repStrip).filter(u => u !== 'OFFLINE_PENDING'),
+                    kitchenPhotoUrls: currentForm.kitchenPhotoUrls.map(repStrip).filter(u => u !== 'OFFLINE_PENDING'),
+                    bathroomPhotoUrls: currentForm.bathroomPhotoUrls.map(repStrip).filter(u => u !== 'OFFLINE_PENDING'),
+                    roomRatings: currentForm.roomRatings.map(r => ({ ...r, photoUrls: (r.photoUrls || []).map(repStrip).filter(u => u !== 'OFFLINE_PENDING') })),
+                };
+            } else {
+                const rep = (u: string) => urlMap.get(u) ?? u;
+                currentForm = {
+                    ...currentForm,
+                    meterPhotoUrls: currentForm.meterPhotoUrls.map(rep),
+                    kitchenPhotoUrls: currentForm.kitchenPhotoUrls.map(rep),
+                    bathroomPhotoUrls: currentForm.bathroomPhotoUrls.map(rep),
+                    roomRatings: currentForm.roomRatings.map(r => ({ ...r, photoUrls: (r.photoUrls || []).map(rep) })),
+                };
+            }
             setForm(currentForm);
         }
 
@@ -1627,21 +1683,24 @@ function ControlCardDialog({
 function AddressRow({ address, card, onClick }: { address: Address; card: ControlCard | null; onClick: () => void; }) {
     const { t } = useLanguage();
     const avg = card ? calculateAverage(card) : 0;
-    const hasIssue = card && (!card.appliancesWorking || card.roomRatings.some(r => r.rating < 4) || card.cleanKitchen < 4 || card.cleanBathroom < 4);
+    const hasIssue = card && Array.isArray(card.comments) && card.comments.length > 0;
 
     return (
         <button
             onClick={onClick}
             className={`w-full text-left group flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all duration-150
         hover:shadow-sm hover:border-primary/30 text-gray-800
-        ${card ? (avg >= 8 ? 'bg-green-500/5 border-green-500/25' : avg >= 4 ? 'bg-yellow-500/5 border-yellow-500/25' : 'bg-red-500/5 border-red-500/25') : 'bg-white border-gray-200 hover:bg-gray-50'}`}
+        ${card ? (avg === 0 ? 'bg-white border-gray-200 hover:bg-gray-50' : avg >= 8 ? 'bg-green-500/5 border-green-500/25' : avg >= 4 ? 'bg-yellow-500/5 border-yellow-500/25' : 'bg-red-500/5 border-red-500/25') : 'bg-white border-gray-200 hover:bg-gray-50'}`}
         >
-            <div className={`shrink-0 rounded-full p-1 ${card ? 'bg-green-500/15' : 'bg-muted'}`}>
-                {card ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <Clock className="w-3.5 h-3.5 text-muted-foreground" />}
+            <div className={`shrink-0 rounded-full p-1 ${card && avg > 0 ? (avg >= 8 ? 'bg-green-500/15' : avg >= 4 ? 'bg-yellow-500/15' : 'bg-red-500/15') : 'bg-muted'}`}>
+                {card && avg > 0 ? (avg >= 8 ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : avg >= 4 ? <CheckCircle2 className="w-3.5 h-3.5 text-yellow-500" /> : <AlertCircle className="w-3.5 h-3.5 text-red-500" />) : <Clock className="w-3.5 h-3.5 text-muted-foreground" />}
             </div>
 
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate text-gray-900">{address.name}</p>
+                <p className="text-sm font-medium truncate text-gray-900 flex items-center gap-1">
+                    {address.name}
+                    {card?.hasPendingPhotos && <span title={t('controlCards.offlinePending', 'Zapisano offline ☁️⏳')} className="text-xs">☁️⏳</span>}
+                </p>
                 <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     {card && (
                         <span className="text-[10px] text-muted-foreground">{card.fillDate}</span>

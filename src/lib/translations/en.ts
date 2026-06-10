@@ -1138,4 +1138,6 @@ export const en = {
     'form.selectRoom': 'Select room',
     'header.language': 'Language',
     'toast.importErrors': 'Import errors',
+    'offlineSync.syncComplete': 'Sync complete',
+    'offlineSync.syncCompleteDesc': 'Successfully synced {count} offline photos.',
 } satisfies Record<string, string>;

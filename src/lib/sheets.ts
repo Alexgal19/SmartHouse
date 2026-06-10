@@ -824,7 +824,7 @@ export async function deleteAddressHistoryEntry(historyId: string) {
 const CONTROL_CARD_HEADERS = [
     'id', 'addressId', 'addressName', 'coordinatorId', 'coordinatorName',
     'controlMonth', 'fillDate', 'roomRatings', 'cleanKitchen', 'cleanBathroom',
-    'kitchenPhotoUrls', 'bathroomPhotoUrls', 'meterPhotoUrls', 'appliancesWorking', 'comments', 'changeLog', 'deleted'
+    'kitchenPhotoUrls', 'bathroomPhotoUrls', 'meterPhotoUrls', 'appliancesWorking', 'comments', 'changeLog', 'deleted', 'hasPendingPhotos'
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -909,6 +909,7 @@ const deserializeControlCard = (row: any): ControlCard | null => {
         comments: parseComments(row.get('comments')),
         changeLog: parseChangeLog(row.get('changeLog')),
         deleted: row.get('deleted') === 'TRUE' || row.get('deleted') === true,
+        hasPendingPhotos: row.get('hasPendingPhotos') === 'TRUE' || row.get('hasPendingPhotos') === true,
     };
 };
 
@@ -949,6 +950,7 @@ export async function addControlCard(card: Omit<ControlCard, 'id'>): Promise<str
         appliancesWorking: card.appliancesWorking ? 'TRUE' : 'FALSE',
         comments: JSON.stringify(card.comments || []),
         changeLog: JSON.stringify(card.changeLog || []),
+        hasPendingPhotos: card.hasPendingPhotos ? 'TRUE' : 'FALSE',
     }), TIMEOUT_MS, 'sheet.addRow(ControlCards)');
     controlCardsCache = null;
     return id;
@@ -963,7 +965,7 @@ export async function updateControlCard(cardId: string, updates: Partial<Omit<Co
     for (const key of keys) {
         const value = updates[key];
         if (value === undefined) continue;
-        if (key === 'appliancesWorking' || key === 'deleted') {
+        if (key === 'appliancesWorking' || key === 'deleted' || key === 'hasPendingPhotos') {
             row.set(key, (value as boolean) ? 'TRUE' : 'FALSE');
         } else if (key === 'roomRatings' || key === 'kitchenPhotoUrls' || key === 'bathroomPhotoUrls' || key === 'meterPhotoUrls' || key === 'comments' || key === 'changeLog') {
             row.set(key, JSON.stringify(value));
@@ -982,7 +984,7 @@ const START_LIST_HEADERS = [
     'distanceToShop', 'floorsCount', 'floorInBuilding', 'roomsCount',
     'kitchensCount', 'bathroomsCount', 'placesCount', 'hasBalcony', 'standard',
     'heating', 'heatingOther', 'kitchenPhotoUrls', 'bathroomPhotoUrls',
-    'roomsPhotoUrls', 'hallwayPhotoUrls', 'updatedAt', 'updatedBy', 'updatedById'
+    'roomsPhotoUrls', 'hallwayPhotoUrls', 'updatedAt', 'updatedBy', 'updatedById', 'hasPendingPhotos'
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1035,6 +1037,7 @@ const deserializeStartList = (row: any): StartList | null => {
         updatedAt: (row.get('updatedAt') as string) || '',
         updatedBy: (row.get('updatedBy') as string) || '',
         updatedById: (row.get('updatedById') as string) || '',
+        hasPendingPhotos: row.get('hasPendingPhotos') === 'TRUE' || row.get('hasPendingPhotos') === true,
     };
 };
 
@@ -1085,6 +1088,7 @@ export async function upsertStartList(data: StartList): Promise<void> {
         updatedAt: data.updatedAt,
         updatedBy: data.updatedBy,
         updatedById: data.updatedById,
+        hasPendingPhotos: data.hasPendingPhotos ? 'TRUE' : 'FALSE',
     };
 
     if (existing) {

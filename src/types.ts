@@ -242,6 +242,8 @@ export type ControlCard = {
   comments: ControlCardComment[];
   changeLog?: ControlCardChangeLogEntry[];
   deleted?: boolean;
+  /** True when saved offline while some photos are still queued in IndexedDB */
+  hasPendingPhotos?: boolean;
 }
 
 export type StartListHousingType = 'Hostel' | 'Dom' | 'Kwatera';
@@ -278,6 +280,8 @@ export type StartList = {
   updatedAt: string;          // ISO date-time
   updatedBy: string;          // coordinator name
   updatedById: string;        // coordinator uid
+  /** True when saved offline while some photos are still queued in IndexedDB */
+  hasPendingPhotos?: boolean;
 }
 
 export type OdbiorType = 'zakwaterowanie' | 'rozmowa_rekrutacyjna' | 'badania';
