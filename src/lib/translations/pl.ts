@@ -1140,6 +1140,9 @@ export const pl = {
     'form.selectRoom': 'Wybierz pokój',
     'header.language': 'Język',
     'toast.importErrors': 'Błędy importu',
+    'controlCards.offlineTitle': 'Tryb offline',
+    'controlCards.offlineDesc': 'Karta zapisana offline. {count} zdjęć czeka na połączenie.',
+    'controlCards.offlinePending': 'Oczekuje',
     'offlineSync.syncComplete': 'Synchronizacja zakończona',
     'offlineSync.syncCompleteDesc': 'Pomyślnie zsynchronizowano {count} zdjęć offline.',
 } satisfies Record<string, string>;

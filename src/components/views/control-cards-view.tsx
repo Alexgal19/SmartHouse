@@ -413,6 +413,7 @@ const RatingField = ({
 // ─── Form State ────────────────────────────────────────────────────────────
 
 type FormState = {
+    hasPendingPhotos?: boolean;
     roomRatings: RoomRating[];
     cleanKitchen: CleanlinessRating;
     cleanBathroom: CleanlinessRating;
@@ -627,22 +628,20 @@ function StartListForm({
             
             if (failed.length > 0) {
                 toast({
-                    title: t('controlCards.offlineTitle', 'Offline'),
-                    description: t('controlCards.offlineDesc', `Karta zapisana offline. ${failed.length} zdjęć czeka na połączenie.`),
+                    title: t('controlCards.offlineTitle'),
+                    description: t('controlCards.offlineDesc', { count: failed.length }),
                 });
                 currentForm.hasPendingPhotos = true;
                 
                 import('@/lib/offline-photo-store').then(({ addPendingPhoto }) => {
                     failed.forEach(f => {
                         addPendingPhoto({
-                            id: `pending_${crypto.randomUUID()}`,
                             base64: f.dataUrl,
                             fileName: 'offline.jpg',
                             mimeType: 'image/jpeg',
                             context: 'start-list',
                             contextId: address.id,
-                            field: 'photo',
-                            status: 'pending'
+                            field: 'photo'
                         }).catch(console.error);
                     });
                 }).catch(console.error);
@@ -1156,22 +1155,20 @@ function ControlCardDialog({
             
             if (failed.length > 0) {
                 toast({
-                    title: t('controlCards.offlineTitle', 'Offline'),
-                    description: t('controlCards.offlineDesc', `Karta zapisana offline. ${failed.length} zdjęć czeka na połączenie.`),
+                    title: t('controlCards.offlineTitle'),
+                    description: t('controlCards.offlineDesc', { count: failed.length }),
                 });
                 currentForm.hasPendingPhotos = true;
                 
                 import('@/lib/offline-photo-store').then(({ addPendingPhoto }) => {
                     failed.forEach(f => {
                         addPendingPhoto({
-                            id: `pending_${crypto.randomUUID()}`,
                             base64: f.dataUrl,
                             fileName: 'offline.jpg',
                             mimeType: 'image/jpeg',
                             context: 'control-card',
                             contextId: existingCard?.id || address.id,
-                            field: 'photo',
-                            status: 'pending'
+                            field: 'photo'
                         }).catch(console.error);
                     });
                 }).catch(console.error);
@@ -1699,7 +1696,7 @@ function AddressRow({ address, card, onClick }: { address: Address; card: Contro
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate text-gray-900 flex items-center gap-1">
                     {address.name}
-                    {card?.hasPendingPhotos && <span title={t('controlCards.offlinePending', 'Zapisano offline ☁️⏳')} className="text-xs">☁️⏳</span>}
+                    {card?.hasPendingPhotos && <span title={t('controlCards.offlinePending')} className="text-xs">☁️⏳</span>}
                 </p>
                 <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     {card && (

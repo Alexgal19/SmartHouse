@@ -1138,6 +1138,9 @@ export const en = {
     'form.selectRoom': 'Select room',
     'header.language': 'Language',
     'toast.importErrors': 'Import errors',
+    'controlCards.offlineTitle': 'Offline mode',
+    'controlCards.offlineDesc': 'Card saved offline. {count} photos pending connection.',
+    'controlCards.offlinePending': 'Pending',
     'offlineSync.syncComplete': 'Sync complete',
     'offlineSync.syncCompleteDesc': 'Successfully synced {count} offline photos.',
 } satisfies Record<string, string>;
