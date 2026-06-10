@@ -21,6 +21,9 @@ import {
     getStartLists as getStartListsFromSheet,
     getControlCards as getControlCardsFromSheet,
     upsertStartList as upsertStartListInSheet,
+    updateStartListFields as updateStartListFieldsInSheet,
+    invalidateControlCardsCache,
+    invalidateStartListsCache,
     getOdbiorEntries as getOdbiorEntriesFromSheet,
     addOdbiorEntry as addOdbiorEntryToSheet,
     updateOdbiorEntry as updateOdbiorEntryInSheet,
@@ -2670,6 +2673,84 @@ export async function saveStartListAction(
         return { success: true };
     } catch (error) {
         console.error('Error saving start list:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+/**
+ * Podmienia placeholdery "pending_*" na realne URL-e po synchronizacji zdjęć offline.
+ * Targeted update: czyta świeży rekord i zapisuje WYŁĄCZNIE pola zdjęć + hasPendingPhotos,
+ * żeby nie nadpisać równoległej edycji pozostałych pól karty.
+ */
+export async function attachSyncedPhotoUrlsAction(
+    context: 'control-card' | 'start-list',
+    contextId: string,
+    replacements: { placeholder: string; url: string }[]
+): Promise<{ success: boolean; remaining?: number; error?: string }> {
+    try {
+        await requireSession();
+        const valid = replacements.filter(r =>
+            r.placeholder.startsWith('pending_') && /^https?:\/\//.test(r.url)
+        );
+        if (valid.length === 0) {
+            return { success: false, error: 'Brak poprawnych podmian (placeholder/url)' };
+        }
+        const urlMap = new Map(valid.map(r => [r.placeholder, r.url]));
+        const rep = (u: string) => urlMap.get(u) ?? u;
+        const repArr = (arr?: string[]) => (arr || []).map(rep);
+        const countPending = (arrs: (string[] | undefined)[]) =>
+            arrs.reduce((acc, arr) => acc + (arr || []).filter(u => u.startsWith('pending_')).length, 0);
+
+        if (context === 'control-card') {
+            // Świeży odczyt przed read-modify-write — cache mógłby nadpisać równoległe edycje zdjęć
+            await invalidateControlCardsCache();
+            const cards = await getControlCardsFromSheet();
+            const card = cards.find(c => c.id === contextId);
+            if (!card) throw new Error('Control card not found');
+
+            const roomRatings = card.roomRatings.map(r => ({ ...r, photoUrls: r.photoUrls ? repArr(r.photoUrls) : r.photoUrls }));
+            const comments = (card.comments || []).map(c => ({ ...c, photoUrls: c.photoUrls ? repArr(c.photoUrls) : c.photoUrls }));
+            const updates: Partial<Omit<ControlCard, 'id'>> = {
+                kitchenPhotoUrls: repArr(card.kitchenPhotoUrls),
+                bathroomPhotoUrls: repArr(card.bathroomPhotoUrls),
+                meterPhotoUrls: repArr(card.meterPhotoUrls),
+                roomRatings,
+                comments,
+            };
+            const remaining = countPending([
+                updates.kitchenPhotoUrls, updates.bathroomPhotoUrls, updates.meterPhotoUrls,
+                ...roomRatings.map(r => r.photoUrls),
+                ...comments.map(c => c.photoUrls),
+            ]);
+            updates.hasPendingPhotos = remaining > 0;
+            await updateControlCardInSheet(contextId, updates);
+            revalidatePath('/dashboard');
+            return { success: true, remaining };
+        }
+
+        // Świeży odczyt przed read-modify-write — cache mógłby nadpisać równoległe edycje zdjęć
+        await invalidateStartListsCache();
+        const lists = await getStartListsFromSheet();
+        const list = lists.find(s => s.addressId === contextId);
+        if (!list) throw new Error('Start list not found');
+
+        const updates: Partial<Omit<StartList, 'addressId'>> = {
+            kitchenPhotoUrls: repArr(list.kitchenPhotoUrls),
+            bathroomPhotoUrls: repArr(list.bathroomPhotoUrls),
+            roomsPhotoUrls: repArr(list.roomsPhotoUrls),
+            hallwayPhotoUrls: repArr(list.hallwayPhotoUrls),
+            updatedAt: new Date().toISOString(),
+        };
+        const remaining = countPending([
+            updates.kitchenPhotoUrls, updates.bathroomPhotoUrls,
+            updates.roomsPhotoUrls, updates.hallwayPhotoUrls,
+        ]);
+        updates.hasPendingPhotos = remaining > 0;
+        await updateStartListFieldsInSheet(contextId, updates);
+        revalidatePath('/dashboard');
+        return { success: true, remaining };
+    } catch (error) {
+        console.error('Error attaching synced photo urls:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
     }
 }

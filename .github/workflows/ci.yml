@@ -39,7 +39,7 @@ jobs:
         run: npm test -- --ci --coverage --passWithNoTests
 
       - name: Build
-        run: next build
+        run: npm run build
         env:
           # Wymagane do buildu — wartości stub dla CI (nie produkcja)
           GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL || 'ci@example.com' }}

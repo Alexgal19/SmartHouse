@@ -53,3 +53,4 @@ test-*.tsx
 
 # worktrees
 /.worktrees/
+/.claude/worktrees/

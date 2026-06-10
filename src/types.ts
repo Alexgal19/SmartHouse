@@ -242,6 +242,8 @@ export type ControlCard = {
   comments: ControlCardComment[];
   changeLog?: ControlCardChangeLogEntry[];
   deleted?: boolean;
+  /** true gdy karta zapisana z placeholderami "pending_*" — zdjęcia czekają w IndexedDB na sync */
+  hasPendingPhotos?: boolean;
 }
 
 export type StartListHousingType = 'Hostel' | 'Dom' | 'Kwatera';
@@ -278,6 +280,8 @@ export type StartList = {
   updatedAt: string;          // ISO date-time
   updatedBy: string;          // coordinator name
   updatedById: string;        // coordinator uid
+  /** true gdy lista zapisana z placeholderami "pending_*" — zdjęcia czekają w IndexedDB na sync */
+  hasPendingPhotos?: boolean;
 }
 
 export type OdbiorType = 'zakwaterowanie' | 'rozmowa_rekrutacyjna' | 'badania';
