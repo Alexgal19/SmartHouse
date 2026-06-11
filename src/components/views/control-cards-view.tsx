@@ -1202,7 +1202,9 @@ function ControlCardDialog({
             editControlCardAction(existingCard.id, currentForm).then(result => {
                 if (result.success) {
                     toast({ title: t('controlCards.updatedSuccess'), description: t('controlCards.savedSuccessDesc', { name: address.name }) });
-                    window.dispatchEvent(new Event('control-cards-updated'));
+                    // Zastosuj kartę zwróconą z serwera (zawiera serwerowy changeLog) zamiast pełnego refetchu,
+                    // który ścigałby się z singleflight i mógł nadpisać stan optymistyczny starymi danymi.
+                    if (result.card) onSaved(result.card);
                 } else {
                     onSaved(existingCard); // revert
                     toast({ title: t('controlCards.saveError'), description: result.error, variant: 'destructive' });

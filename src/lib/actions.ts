@@ -2462,7 +2462,7 @@ function generateControlCardDiff(
 export async function editControlCardAction(
     cardId: string,
     updates: Partial<Omit<ControlCard, 'id' | 'addressId' | 'coordinatorId' | 'controlMonth'>>
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; card?: ControlCard }> {
     try {
         const session = await requireSession();
         const cards = await getControlCardsFromSheet();
@@ -2485,9 +2485,11 @@ export async function editControlCardAction(
             });
         }
 
-        await updateControlCardInSheet(cardId, { ...updates, changeLog: newChangeLog, fillDate: new Date().toISOString().slice(0, 10) });
+        const fillDate = new Date().toISOString().slice(0, 10);
+        await updateControlCardInSheet(cardId, { ...updates, changeLog: newChangeLog, fillDate });
         revalidatePath('/dashboard');
-        return { success: true };
+        const savedCard: ControlCard = { ...oldCard, ...updates, changeLog: newChangeLog, fillDate };
+        return { success: true, card: savedCard };
     } catch (error) {
         console.error('Error editing control card:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
