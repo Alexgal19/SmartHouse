@@ -178,7 +178,7 @@ export default function MainLayout({
             }
             return view || 'odbior';
         }
-        if (view === 'odbior' && !(initialSession.isDriver || initialSession.isAdmin)) {
+        if (view === 'odbior' && !(initialSession.isDriver || initialSession.isAdmin || initialSession.isRekrutacja)) {
             view = 'dashboard';
         }
         if (view) return view;
@@ -348,7 +348,7 @@ export default function MainLayout({
             return navItems.filter(item => item.view === 'zapotrzebowania' || item.view === 'employees' || item.view === 'housing' || item.view === 'control-cards');
         }
         if (currentUser?.isRekrutacja) {
-            return navItems.filter(item => item.view === 'recruitment' || item.view === 'zapotrzebowania' || item.view === 'osoba-do-zakwaterowania');
+            return navItems.filter(item => item.view === 'recruitment' || item.view === 'zapotrzebowania' || item.view === 'osoba-do-zakwaterowania' || item.view === 'odbior');
         }
         return navItems.filter(item => item.view !== 'settings' && item.view !== 'odbior' && item.view !== 'zapotrzebowania' && item.view !== 'recruitment' && item.view !== 'osoba-do-zakwaterowania');
     }, [currentUser, navItems]);

@@ -27,7 +27,7 @@ export default function OdbiorViewPage() {
         );
     }
 
-    if (!(currentUser?.isDriver || currentUser?.isAdmin || currentUser?.isGuest)) {
+    if (!(currentUser?.isDriver || currentUser?.isAdmin || currentUser?.isGuest || currentUser?.isRekrutacja)) {
         redirect('/dashboard');
     }
     return <OdbiorView currentUser={currentUser} />;
