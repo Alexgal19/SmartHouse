@@ -86,7 +86,7 @@ export function MobileNav({
         if (item.view === 'recruitment' && !(currentUser?.isAdmin || currentUser?.isRekrutacja)) {
             return false;
         }
-        if (item.view === 'zapotrzebowania' && !(currentUser?.isAdmin || currentUser?.isDriver || currentUser?.isBok || currentUser?.isRekrutacja)) {
+        if (item.view === 'zapotrzebowania' && !(currentUser?.isAdmin || currentUser?.isDriver || currentUser?.isBok)) {
             return false;
         }
         return true;
