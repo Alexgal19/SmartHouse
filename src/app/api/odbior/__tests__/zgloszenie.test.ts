@@ -188,8 +188,10 @@ describe('POST /api/odbior/zgloszenie', () => {
         expect(body.error).toBe('Sheet write failed');
     });
 
-    it('returns 403 when user is neither admin nor driver', async () => {
+    it('allows creation when user is a general logged in worker', async () => {
         (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, uid: 'user-1', name: 'Test', isAdmin: false, isDriver: false });
+        mockedAddOdbiorZgloszenieRow.mockResolvedValue({ id: 'zgl-new' });
+        mockedGetSettings.mockResolvedValue({ coordinators: [] });
 
         const formData = new FormData();
         formData.append('numerTelefonu', '123456789');
@@ -199,8 +201,8 @@ describe('POST /api/odbior/zgloszenie', () => {
         const req = makeRequest(formData);
         const res = await POST(req);
 
-        expect(res.status).toBe(403);
+        expect(res.status).toBe(200);
         const body = await res.json();
-        expect(body.error).toBe('Brak uprawnień.');
+        expect(body.success).toBe(true);
     });
 });

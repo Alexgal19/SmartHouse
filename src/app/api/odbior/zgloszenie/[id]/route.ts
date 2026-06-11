@@ -11,17 +11,7 @@ export async function DELETE(
     if (!session.isLoggedIn) {
         return NextResponse.json({ error: 'Nieautoryzowany dostęp.' }, { status: 401 });
     }
-    if (!session.isAdmin && !session.isDriver && !session.isGuest) {
-        return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
-    }
-    // Guests cannot delete
-    if (session.isGuest) {
-        return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
-    }
-    // allow admin or non-driver (recruiter); pure drivers cannot delete
-    if (!session.isAdmin && session.isDriver) {
-        return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
-    }
+    // Wyeliminowano restrykcyjny check, który blokował użytkowników niejawnych (np. koordynatorów bez flag)
 
     const { id } = params;
     if (!id) {
@@ -29,6 +19,23 @@ export async function DELETE(
     }
 
     try {
+        const zgloszenia = await getOdbiorZgloszenia();
+        const existing = zgloszenia.find(z => z.id === id);
+
+        if (!existing) {
+            return NextResponse.json({ error: 'Nie znaleziono zgłoszenia.' }, { status: 404 });
+        }
+
+        // Guests can only delete their own submissions
+        if (session.isGuest && existing.rekruterId !== session.uid) {
+            return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
+        }
+        
+        // Pure drivers cannot delete
+        if (session.isDriver && !session.isAdmin) {
+            return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
+        }
+
         await softDeleteOdbiorZgloszenie(id, session.name ?? session.uid ?? '');
         return NextResponse.json({ success: true });
     } catch (error) {
@@ -48,9 +55,7 @@ export async function PATCH(
     if (!session.isLoggedIn) {
         return NextResponse.json({ error: 'Nieautoryzowany dostęp.' }, { status: 401 });
     }
-    if (!session.isAdmin && !session.isDriver && !session.isGuest) {
-        return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
-    }
+    // Usunięto restrykcyjny check blokujący innych pracowników
 
     const { id } = params;
     if (!id) {

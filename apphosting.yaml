@@ -12,6 +12,8 @@ serve:
 env:
   - variable: ADMIN_PASSWORD
     secret: ADMIN_PASSWORD
+  - variable: GUEST_PASSWORD
+    secret: GUEST_PASSWORD
   - variable: SECRET_COOKIE_PASSWORD
     secret: SECRET_COOKIE_PASSWORD
   - variable: GOOGLE_SERVICE_ACCOUNT_EMAIL

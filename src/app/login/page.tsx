@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { login } from '@/lib/auth';
+import { login, loginAsGuest } from '@/lib/auth';
 import { Download, Loader2, Eye, EyeOff, Share } from 'lucide-react';
 import { usePWAInstaller } from '@/components/pwa-installer';
 import { useLanguage } from '@/lib/i18n';
@@ -47,6 +47,9 @@ function LoginForm() {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [showIOSDialog, setShowIOSDialog] = useState(false);
+    const [guestOpen, setGuestOpen] = useState(false);
+    const [guestPassword, setGuestPassword] = useState('');
+    const [guestLoading, setGuestLoading] = useState(false);
 
     const searchParams = useSearchParams();
 
@@ -84,6 +87,31 @@ function LoginForm() {
             });
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleGuestLogin = async () => {
+        setGuestLoading(true);
+        try {
+            const { success, user, error } = await loginAsGuest(guestPassword);
+            if (success && user) {
+                toast({ title: `Witaj, ${user.name}!`, duration: 2000 });
+                router.push('/dashboard/odbior');
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: t('login.guestError'),
+                    description: error,
+                });
+            }
+        } catch (err) {
+            toast({
+                variant: 'destructive',
+                title: 'Wystąpił błąd',
+                description: err instanceof Error ? err.message : 'Spróbuj ponownie później.',
+            });
+        } finally {
+            setGuestLoading(false);
         }
     };
 
@@ -132,6 +160,15 @@ function LoginForm() {
                     <Button className="w-full" type="submit" disabled={isLoading || password === ''}>
                         {isLoading ? <Loader2 className="animate-spin" /> : "Zaloguj się"}
                     </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setGuestOpen(true)}
+                        disabled={isLoading}
+                    >
+                        {t('login.guestButton')}
+                    </Button>
                     {showInstallButton && (
                         isIOS ? (
                             <Button
@@ -152,6 +189,35 @@ function LoginForm() {
                     )}
                 </CardFooter>
             </form>
+
+            <Dialog open={guestOpen} onOpenChange={setGuestOpen}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>{t('login.guestDialogTitle')}</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-2 text-left py-2">
+                        <Label htmlFor="guest-password">{t('login.guestPasswordLabel')}</Label>
+                        <Input
+                            id="guest-password"
+                            type="password"
+                            value={guestPassword}
+                            onChange={(e) => setGuestPassword(e.target.value)}
+                            disabled={guestLoading}
+                            onKeyDown={(e) => { if (e.key === 'Enter' && guestPassword !== '') handleGuestLogin(); }}
+                            autoFocus
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            className="w-full"
+                            onClick={handleGuestLogin}
+                            disabled={guestLoading || guestPassword === ''}
+                        >
+                            {guestLoading ? <Loader2 className="animate-spin" /> : t('login.guestEnter')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={showIOSDialog} onOpenChange={setShowIOSDialog}>
                 <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-sm">

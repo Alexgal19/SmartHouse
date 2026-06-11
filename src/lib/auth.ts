@@ -10,6 +10,7 @@ import { sessionOptions } from '@/lib/session';
 import bcrypt from 'bcryptjs';
 import admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebase-admin';
+import { isValidGuestPassword } from '@/lib/guest-auth';
 
 // Rate limiter backed by Firestore — works across serverless instances
 // Falls back silently if Firestore is unavailable
@@ -140,6 +141,49 @@ export async function login(name: string, password_input: string) {
 
   await recordFailedAttempt(ip);
   throw new Error("Nieprawidłowa nazwa użytkownika lub hasło.");
+}
+
+export async function loginAsGuest(password_input: string): Promise<{
+  success: boolean;
+  user?: {
+    uid: string; name: string;
+    isAdmin: boolean; isDriver: boolean; isRekrutacja: boolean; isBok: boolean;
+    isGuest: boolean; canEditPastControlCards: boolean;
+  };
+  error?: string;
+}> {
+  const ip = (await headers()).get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  await checkRateLimit(ip); // rzuca błąd przy przekroczeniu limitu — łapany w UI
+
+  if (!isValidGuestPassword(password_input, process.env.GUEST_PASSWORD)) {
+    if (!process.env.GUEST_PASSWORD) {
+      console.warn('[auth] GUEST_PASSWORD nie jest ustawione — logowanie gościa wyłączone (fail-closed).');
+    }
+    await recordFailedAttempt(ip);
+    return { success: false, error: 'Nieprawidłowe hasło gościa.' };
+  }
+
+  await clearAttempts(ip);
+  const session = await getSession();
+  session.isLoggedIn = true;
+  session.uid = 'guest';
+  session.name = 'Gość';
+  session.isAdmin = false;
+  session.isDriver = false;
+  session.isRekrutacja = false;
+  session.isBok = false;
+  session.isGuest = true;
+  session.canEditPastControlCards = false;
+  await session.save();
+
+  return {
+    success: true,
+    user: {
+      uid: 'guest', name: 'Gość',
+      isAdmin: false, isDriver: false, isRekrutacja: false, isBok: false,
+      isGuest: true, canEditPastControlCards: false,
+    },
+  };
 }
 
 export async function logout() {

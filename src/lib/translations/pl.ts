@@ -59,6 +59,13 @@ export const pl = {
     'header.support': 'Wsparcie',
     'header.logout': 'Wyloguj się',
 
+    // Guest login
+    'login.guestButton': 'Wejdź jako Gość',
+    'login.guestDialogTitle': 'Logowanie gościa',
+    'login.guestPasswordLabel': 'Hasło gościa',
+    'login.guestEnter': 'Wejdź',
+    'login.guestError': 'Nieprawidłowe hasło gościa.',
+
     // Entity view
     'entity.title': 'Zarządzanie mieszkańcami',
     'entity.searchBySurname': 'Szukaj po imieniu lub nazwisku...',
@@ -858,6 +865,8 @@ export const pl = {
     'odbior.loadError': 'Nie udało się załadować zgłoszeń.',
     'odbior.searchPlaceholder': 'Szukaj (miejsce, rekruter...)',
     'odbior.filterAll': 'Wszystkie statusy',
+    'odbior.filterRecruiter': 'Rekruter',
+    'odbior.filterAllRecruiters': 'Wszyscy rekruterzy',
     'odbior.changeLogTitle': 'Historia zmian',
     'odbior.cancelFinish': 'Anuluj zakończenie',
     'odbior.finishCancelled': 'Anulowano zakończenie',

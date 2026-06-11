@@ -30,7 +30,7 @@ describe('GET /api/odbior/zgloszenia', () => {
         mockedGetOdbiorZgloszenia.mockResolvedValue([
             { id: 'z-1', dataZgloszenia: '2024-04-28 10:00', deletedAt: '', status: 'Nieprzyjęte' },
             { id: 'z-2', dataZgloszenia: '2024-04-29 10:00', deletedAt: '', status: 'W trakcie' },
-            { id: 'z-3', dataZgloszenia: '2024-04-27 10:00', deletedAt: '2024-04-30', status: 'Nieprzyjęte' },
+            { id: 'z-3', dataZgloszenia: '2024-04-27 10:00', deletedAt: '2024-04-30', status: 'Usunięte' },
         ]);
 
         const res = await GET();

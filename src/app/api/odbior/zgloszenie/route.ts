@@ -13,9 +13,7 @@ export async function POST(req: NextRequest) {
     if (!session.isLoggedIn) {
         return NextResponse.json({ error: 'Nieautoryzowany dostęp.' }, { status: 401 });
     }
-    if (!session.isAdmin && !session.isDriver && !session.isGuest) {
-        return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
-    }
+    // Wyeliminowano check blokujący innych pracowników (koordynatorów)
 
     // Rate limiting
     const identifier = session.uid ? `u:${session.uid}` : getIdentifier(req);

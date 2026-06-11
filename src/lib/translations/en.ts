@@ -59,6 +59,13 @@ export const en = {
     'header.support': 'Support',
     'header.logout': 'Log out',
 
+    // Guest login
+    'login.guestButton': 'Enter as Guest',
+    'login.guestDialogTitle': 'Guest login',
+    'login.guestPasswordLabel': 'Guest password',
+    'login.guestEnter': 'Enter',
+    'login.guestError': 'Invalid guest password.',
+
     // Entity view
     'entity.title': 'Resident Management',
     'entity.searchBySurname': 'Search by first or last name...',
@@ -858,6 +865,8 @@ export const en = {
     'odbior.loadError': 'Failed to load submissions.',
     'odbior.searchPlaceholder': 'Search (location, recruiter...)',
     'odbior.filterAll': 'All statuses',
+    'odbior.filterRecruiter': 'Recruiter',
+    'odbior.filterAllRecruiters': 'All recruiters',
     'odbior.changeLogTitle': 'Change history',
     'odbior.cancelFinish': 'Cancel completion',
     'odbior.finishCancelled': 'Completion cancelled',

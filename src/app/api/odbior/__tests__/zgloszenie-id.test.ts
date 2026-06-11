@@ -23,6 +23,9 @@ const rekrutacjaSession = { isLoggedIn: true, uid: 'rec-1', name: 'Rec', isAdmin
 describe('DELETE /api/odbior/zgloszenie/[id]', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        mockedGetOdbiorZgloszenia.mockResolvedValue([
+            { id: 'zgl-1', rekruterId: 'rec-1' } // mock needed for existing check
+        ]);
     });
 
     it('returns 401 when not authenticated', async () => {
@@ -63,8 +66,18 @@ describe('DELETE /api/odbior/zgloszenie/[id]', () => {
         expect(mockedSoftDeleteOdbiorZgloszenie).toHaveBeenCalledWith('zgl-1', 'Admin');
     });
 
-    it('soft deletes successfully for non-driver recruiter', async () => {
-        (getSession as jest.Mock).mockResolvedValue(rekrutacjaSession);
+    it('soft deletes successfully for recruiter if they own the submission', async () => {
+        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, uid: 'rec-1', name: 'Rec', isGuest: true });
+        mockedSoftDeleteOdbiorZgloszenie.mockResolvedValue(undefined);
+
+        const res = await DELETE({} as NextRequest, { params: { id: 'zgl-1' } });
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body.success).toBe(true);
+    });
+
+    it('returns 403 for recruiter if they DO NOT own the submission', async () => {
+        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, uid: 'other-1', name: 'Rec', isGuest: true });
 
         const res = await DELETE({} as NextRequest, { params: { id: 'zgl-1' } });
         expect(res.status).toBe(403);

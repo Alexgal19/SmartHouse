@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -369,6 +369,7 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [recruiterFilter, setRecruiterFilter] = useState<string>('all');
     const { toast } = useToast();
     const { t } = useLanguage();
     
@@ -453,11 +454,15 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
         window.dispatchEvent(new CustomEvent('odbior-status-updated'));
     };
 
+    const uniqueRecruiters = useMemo(() =>
+        [...new Set(submissions.map(s => s.recruiter).filter(Boolean))].sort(),
+    [submissions]);
+
     const filteredSubmissions = submissions.filter(row => {
         const matchesSearch = !searchTerm.trim() ||
             row.from.toLowerCase().includes(searchTerm.toLowerCase()) ||
             row.recruiter.toLowerCase().includes(searchTerm.toLowerCase());
-        
+
         let matchesStatus = false;
         if (statusFilter === 'all') {
             matchesStatus = true;
@@ -466,8 +471,10 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
         } else {
             matchesStatus = row.status === statusFilter;
         }
-        
-        return matchesSearch && matchesStatus;
+
+        const matchesRecruiter = recruiterFilter === 'all' || row.recruiter === recruiterFilter;
+
+        return matchesSearch && matchesStatus && matchesRecruiter;
     });
 
     const handleDelete = async () => {
@@ -611,6 +618,17 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                         <option value="W trakcie">{t('odbior.statusInProgress')}</option>
                         <option value="Zakończone_Dostarczone">{t('odbior.statusCompleted')}</option>
                     </select>
+                    <select
+                        title={t('odbior.filterRecruiter')}
+                        className="h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring sm:w-56"
+                        value={recruiterFilter}
+                        onChange={e => setRecruiterFilter(e.target.value)}
+                    >
+                        <option value="all">{t('odbior.filterAllRecruiters')}</option>
+                        {uniqueRecruiters.map(name => (
+                            <option key={name} value={name}>{name}</option>
+                        ))}
+                    </select>
                 </div>
                 {/* Mobile cards */}
                 <div className="sm:hidden space-y-3">
@@ -655,12 +673,13 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                                         <Eye className="h-4 w-4 mr-2" />
                                         {t('odbior.details')}
                                     </Button>
-                                    {(_currentUser.isAdmin || !_currentUser.isDriver) && !_currentUser.isGuest && (
+                                    {!_currentUser.isGuest && (
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="h-9 px-3 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                            className="h-9 px-3 text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-40 disabled:cursor-not-allowed"
                                             aria-label={t('common.delete')}
+                                            disabled={_currentUser.isDriver}
                                             onClick={() => setDeleteConfirmId(row.id)}
                                         >
                                             <Trash2 className="h-4 w-4" />
@@ -720,12 +739,13 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                                                         >
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
-                                                        {(_currentUser.isAdmin || !_currentUser.isDriver) && !_currentUser.isGuest && (
+                                                        {!_currentUser.isGuest && (
                                                             <Button
                                                                 variant="outline"
                                                                 size="icon"
-                                                                className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                                                className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-40 disabled:cursor-not-allowed"
                                                                 aria-label={t('common.delete')}
+                                                                disabled={_currentUser.isDriver}
                                                                 onClick={() => setDeleteConfirmId(row.id)}
                                                             >
                                                                 <Trash2 className="h-4 w-4" />

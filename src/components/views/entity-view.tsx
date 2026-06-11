@@ -159,7 +159,7 @@ const PaginationControls = React.memo(({
 PaginationControls.displayName = 'PaginationControls';
 
 
-const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder, isBokTab, columnFilters, onColumnFilterChange, columnOptions, bokPendingIds }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; isBokTab?: boolean; columnFilters?: Record<string, string[]>; onColumnFilterChange?: (field: string, values: string[]) => void; columnOptions?: Record<string, { label: string, value: string }[]>; bokPendingIds?: Set<string>; }) => {
+const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder, isBokTab, columnFilters, onColumnFilterChange, columnOptions }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; isBokTab?: boolean; columnFilters?: Record<string, string[]>; onColumnFilterChange?: (field: string, values: string[]) => void; columnOptions?: Record<string, { label: string, value: string }[]>; }) => {
     const { t } = useLanguage();
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
@@ -186,7 +186,6 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
                 <TableBody>
                     {entities.length > 0 ? (
                         entities.map((entity, index) => {
-                            const isPending = isBokTab && isBokResident(entity) && bokPendingIds?.has(entity.id);
                             return (
                                 <TableRow
                                     key={entity.id}
@@ -197,11 +196,6 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
                                     <TableCell className="font-medium">
                                         <div className="flex flex-col gap-1">
                                             <span>{entity.lastName}</span>
-                                            {isPending && (
-                                                <Badge variant="destructive" className="text-[10px] px-1 py-0 w-fit">
-                                                    W oczekiwaniu na rozmowę
-                                                </Badge>
-                                            )}
                                         </div>
                                     </TableCell>
                                     <TableCell className="font-medium">{entity.firstName}</TableCell>
@@ -307,7 +301,7 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete, columnFilt
     );
 };
 
-const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, bokPendingIds }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; bokPendingIds?: Set<string>; }) => {
+const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; }) => {
     const { t } = useLanguage();
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
@@ -315,7 +309,6 @@ const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, on
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {entities.length > 0 ? (
                 entities.map((entity, index) => {
-                    const isPending = isBokResident(entity) && bokPendingIds?.has(entity.id);
                     return (
                         <Card
                             key={entity.id}
@@ -329,11 +322,6 @@ const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, on
                                     <CardDescription>
                                         {isBokResident(entity) ? t('entity.bokResidentLabel') : (isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : t('entity.nonEmployeeLabel'))}
                                     </CardDescription>
-                                    {isPending && (
-                                        <Badge variant="destructive" className="mt-1 text-[10px] px-1 py-0">
-                                            W oczekiwaniu na rozmowę
-                                        </Badge>
-                                    )}
                                 </div>
                                 <div onClick={(e) => e.stopPropagation()}>
                                     <EntityActions {...{ entity, onEdit, onRestore, onPermanentDelete, isDismissed }} />
@@ -588,17 +576,6 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
     const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
     const [drillDownField, setDrillDownField] = useState<'hasPermit' | 'hasPesel' | null>(null);
-
-    const bokPendingIds = useMemo(() => {
-        const ids = new Set<string>();
-        if (!odbiorEntries) return ids;
-        for (const entry of odbiorEntries) {
-            if (entry.type === 'zakwaterowanie' && entry.convertedToBokId) {
-                ids.add(entry.convertedToBokId);
-            }
-        }
-        return ids;
-    }, [odbiorEntries]);
 
     const handleColumnFilterChange = (field: string, values: string[]) => {
         setColumnFilters(prev => ({ ...prev, [field]: values }));
@@ -971,7 +948,6 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             columnFilters={columnFilters}
                             onColumnFilterChange={handleColumnFilterChange}
                             columnOptions={columnOptions}
-                            bokPendingIds={bokPendingIds}
                         /> :
                         <EntityCardList
                             entities={data}
@@ -980,7 +956,6 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             onRestore={handleRestore}
                             onPermanentDelete={handlePermanentDelete}
                             isDismissed={isDismissed}
-                            bokPendingIds={bokPendingIds}
                         />
                     )
                     : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}

@@ -7,13 +7,11 @@ export async function GET() {
     if (!session.isLoggedIn) {
         return NextResponse.json({ error: 'Nieautoryzowany dostęp.' }, { status: 401 });
     }
-    if (!session.isAdmin && !session.isDriver && !session.isGuest) {
-        return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
-    }
+    // Usunięto sztuczny check
 
     try {
         const zgloszenia = await getOdbiorZgloszenia();
-        let active = zgloszenia.filter(z => !z.deletedAt);
+        let active = zgloszenia.filter(z => z.status !== 'Usunięte');
         if (session.isGuest) {
             active = active.filter(z => z.rekruterId === session.uid);
         }
