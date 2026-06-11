@@ -674,7 +674,8 @@ function StartListForm({
                 const saved: StartList = { ...payload, updatedAt: new Date().toISOString() };
                 onSaved(saved);
                 toast({ title: t('controlCards.startListSaved'), description: t('controlCards.startListSavedDesc', { name: address.name }) });
-                window.dispatchEvent(new Event('control-cards-updated'));
+                // Brak refetchu: onSaved (upsert po addressId) to autorytatywny stan ze zdjęciami.
+                // Pełny refetch ścigał się z singleflight('startLists') i nadpisywał go starymi danymi (znikające zdjęcie).
             } else {
                 toast({ title: t('controlCards.saveError'), description: res.error, variant: 'destructive' });
             }
