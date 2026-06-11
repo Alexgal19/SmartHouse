@@ -4,6 +4,8 @@ import path from 'path';
 
 // Load .env.local for Playwright tests
 dotenv.config({ path: path.resolve(__dirname, '.env.local') });
+// Override with test-specific values (e.g. SPREADSHEET_ID pointing to a test sheet)
+dotenv.config({ path: path.resolve(__dirname, '.env.test'), override: true });
 
 export default defineConfig({
   testDir: './tests',
@@ -28,6 +30,11 @@ export default defineConfig({
     url: 'http://localhost:3000/login',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    // Pass test-specific env vars (e.g. SPREADSHEET_ID) so the dev server
+    // writes to the test Google Sheet instead of production data.
+    env: {
+      SPREADSHEET_ID: process.env.SPREADSHEET_ID ?? '',
+    },
   },
   projects: [
     {

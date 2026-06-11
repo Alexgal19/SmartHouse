@@ -8,7 +8,7 @@ import { format, isValid, parse, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { singleflight } from './singleflight';
 
-const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
+const SPREADSHEET_ID = process.env.SPREADSHEET_ID || '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
