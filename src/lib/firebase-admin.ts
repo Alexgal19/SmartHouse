@@ -4,8 +4,8 @@ import admin from 'firebase-admin';
 if (!admin.apps.length) {
   const serviceAccount = {
     projectId: "studio-6821761262-fdf39",
-    clientEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    privateKey: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    clientEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim(),
+    privateKey: process.env.GOOGLE_PRIVATE_KEY?.trim().replace(/\\n/g, '\n'),
   };
 
   if (!serviceAccount.clientEmail || !serviceAccount.privateKey) {

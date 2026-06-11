@@ -7,8 +7,8 @@ const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SNAPSHOT_SHEET_NAME = 'DataGuardSnapshots';
 
 function getAuth(): JWT {
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const key = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim();
+  const key = process.env.GOOGLE_PRIVATE_KEY?.trim().replace(/\\n/g, '\n');
   if (!email || !key) throw new Error('Missing Google credentials');
   return new JWT({ email, key, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
 }

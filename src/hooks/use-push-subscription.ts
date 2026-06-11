@@ -80,7 +80,7 @@ export const usePushSubscription = () => {
                         const registration = await withTimeout(navigator.serviceWorker.ready, 5000, 'Service Worker');
                         const currentToken = await withTimeout(
                             getToken(messagingInstance, {
-                                vapidKey: process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY,
+                                vapidKey: process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY?.trim(),
                                 serviceWorkerRegistration: registration
                             }),
                             5000,
@@ -106,7 +106,7 @@ export const usePushSubscription = () => {
     }, [setPushSubscription, currentUser, settings, handleUpdateCoordinatorSubscription]);
 
     const subscribe = useCallback(async () => {
-        if (!process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY) {
+        if (!process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY?.trim()) {
             toast({
                 variant: 'destructive',
                 title: 'Błąd konfiguracji',
@@ -134,7 +134,7 @@ export const usePushSubscription = () => {
             const registration = await withTimeout(navigator.serviceWorker.ready, 8000, 'Service Worker');
             const token = await withTimeout(
                 getToken(messagingInstance, {
-                    vapidKey: process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY,
+                    vapidKey: process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY?.trim(),
                     serviceWorkerRegistration: registration
                 }),
                 8000,

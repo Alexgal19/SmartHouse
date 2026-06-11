@@ -3,7 +3,7 @@ import { getSession } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limiter';
 
 /** Ręczne uruchomienie alertów z UI — tylko dla adminów */
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   const session = await getSession();
   if (!session.isLoggedIn || !session.isAdmin) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   const res = await fetch(`${baseUrl}/api/alerts`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${process.env.CRON_SECRET}`,
+      Authorization: `Bearer ${process.env.CRON_SECRET?.trim()}`,
       'Content-Type': 'application/json',
     },
   });

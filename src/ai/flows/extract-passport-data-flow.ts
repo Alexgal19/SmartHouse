@@ -56,7 +56,7 @@ async function withRetry<T>(
 }
 
 export async function extractPassportData(input: ExtractPassportDataInput): Promise<ExtractPassportDataOutput> {
-  const apiKey = process.env.GOOGLE_GENAI_API_KEY;
+  const apiKey = process.env.GOOGLE_GENAI_API_KEY?.trim();
   if (!apiKey) {
     throw new Error('Brak klucza GOOGLE_GENAI_API_KEY w konfiguracji.');
   }

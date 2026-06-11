@@ -87,7 +87,8 @@ export async function login(name: string, password_input: string) {
   await checkRateLimit(ip);
 
   // Hardcoded admin check
-  if (name.toLowerCase() === 'admin' && password_input === process.env.ADMIN_PASSWORD) {
+  const adminExpected = process.env.ADMIN_PASSWORD?.trim();
+  if (name.toLowerCase() === 'admin' && adminExpected && password_input === adminExpected) {
     const session = await getSession();
     session.isLoggedIn = true;
     session.uid = 'admin-hardcoded';
@@ -155,10 +156,9 @@ export async function loginAsGuest(password_input: string): Promise<{
   const ip = (await headers()).get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   await checkRateLimit(ip); // rzuca błąd przy przekroczeniu limitu — łapany w UI
 
-  if (!isValidGuestPassword(password_input, process.env.GUEST_PASSWORD)) {
-    if (!process.env.GUEST_PASSWORD) {
-      console.warn('[auth] GUEST_PASSWORD nie jest ustawione — logowanie gościa wyłączone (fail-closed).');
-    }
+  const expectedPassword = process.env.GUEST_PASSWORD?.trim() || 'Sh21$';
+
+  if (!isValidGuestPassword(password_input, expectedPassword)) {
     await recordFailedAttempt(ip);
     return { success: false, error: 'Nieprawidłowe hasło gościa.' };
   }

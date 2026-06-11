@@ -11,8 +11,8 @@ export async function uploadFileToDrive(
     fileBuffer: Buffer
 ): Promise<{ url: string, error?: string }> {
     try {
-        const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-        const key = process.env.GOOGLE_PRIVATE_KEY;
+        const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim();
+        const key = process.env.GOOGLE_PRIVATE_KEY?.trim().replace(/\\n/g, '\n');
 
         const auth = new google.auth.JWT({
             email,

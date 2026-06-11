@@ -7,7 +7,7 @@ import type { Employee, NonEmployee, BokResident, Coordinator } from '@/types';
 // ─── Auth ──────────────────────────────────────────────────────────────────
 function authorize(req: NextRequest): boolean {
   const authHeader = req.headers.get('authorization');
-  return !!process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  return !!process.env.CRON_SECRET?.trim() && authHeader === `Bearer ${process.env.CRON_SECRET?.trim()}`;
 }
 
 // ─── Notification helpers ──────────────────────────────────────────────────

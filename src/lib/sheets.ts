@@ -8,7 +8,7 @@ import { format, isValid, parse, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { singleflight } from './singleflight';
 
-const SPREADSHEET_ID = process.env.SPREADSHEET_ID || '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
+const SPREADSHEET_ID = process.env.SPREADSHEET_ID?.trim() || '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
@@ -85,8 +85,8 @@ export async function invalidateCandidatesCache() { candidatesCache = null; }
 export async function invalidateCandidateDemandsCache() { candidateDemandsCache = null; }
 
 function getAuth(): JWT {
-    const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    const key = process.env.GOOGLE_PRIVATE_KEY;
+    const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim();
+    const key = process.env.GOOGLE_PRIVATE_KEY?.trim().replace(/\\n/g, '\n');
 
     if (!email) {
         throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_EMAIL. Please add it to your .env.local file.');

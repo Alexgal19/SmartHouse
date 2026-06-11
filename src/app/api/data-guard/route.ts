@@ -47,8 +47,8 @@ interface AnomalyReport {
 
 // ─── Auth ──────────────────────────────────────────────────────────────────
 function getAuth(): JWT {
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const key = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim();
+  const key = process.env.GOOGLE_PRIVATE_KEY?.trim().replace(/\\n/g, '\n');
   if (!email || !key) throw new Error('Missing Google service account credentials');
   return new JWT({ email, key, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
 }
@@ -179,7 +179,7 @@ async function notifyAdmins(anomalies: AnomalyReport[]): Promise<void> {
 // ─── Route handlers ────────────────────────────────────────────────────────
 function authorize(req: NextRequest): boolean {
   const authHeader = req.headers.get('authorization');
-  return !!process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  return !!process.env.CRON_SECRET?.trim() && authHeader === `Bearer ${process.env.CRON_SECRET?.trim()}`;
 }
 
 export async function POST(req: NextRequest) {

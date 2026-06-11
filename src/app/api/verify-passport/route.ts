@@ -15,8 +15,8 @@ export async function POST(req: NextRequest) {
 
     const hash = createHash('sha256').update(input).digest('hex');
     const expected = type === 'quick'
-        ? process.env.PASSPORT_HASH_QUICK
-        : process.env.PASSPORT_HASH_FULL;
+        ? process.env.PASSPORT_HASH_QUICK?.trim()
+        : process.env.PASSPORT_HASH_FULL?.trim();
 
     return NextResponse.json({ valid: hash === expected });
 }

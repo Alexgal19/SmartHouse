@@ -4,7 +4,7 @@ import { checkRateLimit } from '@/lib/rate-limiter';
 
 function authorize(req: NextRequest): boolean {
   const authHeader = req.headers.get('authorization');
-  return !!process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  return !!process.env.CRON_SECRET?.trim() && authHeader === `Bearer ${process.env.CRON_SECRET?.trim()}`;
 }
 
 export async function POST(req: NextRequest) {

@@ -23,7 +23,7 @@ export async function POST() {
         const res = await fetch(`${baseUrl}/api/candidate-demand/retry`, {
             method: 'POST',
             headers: {
-                Authorization: `Bearer ${process.env.CRON_SECRET}`,
+                Authorization: `Bearer ${process.env.CRON_SECRET?.trim()}`,
                 'Content-Type': 'application/json',
             },
         });
