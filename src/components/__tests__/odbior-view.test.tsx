@@ -204,7 +204,8 @@ describe('OdbiorView', () => {
   });
 
   it('submits the new submission form successfully', async () => {
-    render(<OdbiorView currentUser={mockUser} />);
+    const guestUser: SessionData = { ...mockUser, isGuest: true, isLoggedIn: false };
+    render(<OdbiorView currentUser={guestUser} />);
     fireEvent.click(screen.getByText('Zgłoś odbiór'));
 
     await waitFor(() => {

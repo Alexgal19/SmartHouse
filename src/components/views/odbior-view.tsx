@@ -107,10 +107,12 @@ function ZglosOdbiorDialog({
     open,
     onOpenChange,
     onSuccess,
+    isGuest,
 }: {
     open: boolean;
     onOpenChange: (v: boolean) => void;
     onSuccess: (z: OdbiorZgloszenie) => void;
+    isGuest: boolean;
 }) {
     const { toast } = useToast();
     const { t } = useLanguage();
@@ -121,7 +123,7 @@ function ZglosOdbiorDialog({
 
     const formSchema = z.object({
         phone:       z.string().min(1, t('odbior.errorRequiredPhone')).regex(/^[\d\s()+-]{6,}$/, t('odbior.errorInvalidPhone')),
-        recruiterName: z.string().min(1, 'Nazwisko i imię rekrutera jest wymagane'),
+        recruiterName: isGuest ? z.string().min(1, 'Nazwisko i imię rekrutera jest wymagane') : z.string().optional(),
         from:        z.enum(['autobusowa', 'pociagowa', 'inne'], { required_error: t('odbior.errorSelectFrom') }),
         fromComment: z.string().optional(),
         persons:     z.number().min(1, t('odbior.errorMinPersons')).max(99),
@@ -201,6 +203,7 @@ function ZglosOdbiorDialog({
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         {/* Rekruter */}
+                        {isGuest && (
                         <FormField control={form.control} name="recruiterName" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Nazwisko i imię rekrutera *</FormLabel>
@@ -210,6 +213,7 @@ function ZglosOdbiorDialog({
                                 <FormMessage />
                             </FormItem>
                         )} />
+                        )}
 
                         {/* Telefon */}
                         <FormField control={form.control} name="phone" render={({ field }) => (
@@ -783,7 +787,7 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                 </DialogContent>
             </Dialog>
 
-            <ZglosOdbiorDialog open={dialogOpen} onOpenChange={setDialogOpen} onSuccess={handleNewSubmission} />
+            <ZglosOdbiorDialog open={dialogOpen} onOpenChange={setDialogOpen} onSuccess={handleNewSubmission} isGuest={!!_currentUser.isGuest} />
 
             {selectedZgloszenie && (
                 <OdbiorDetailDialog

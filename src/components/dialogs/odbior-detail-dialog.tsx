@@ -699,6 +699,7 @@ function KartaWTrakcie({
                 passportNumber: updated[index].paszport || '',
                 passportPhotoUrl: updated[index].paszportFotoUrl,
                 sourceOdbiorId: z.id,
+                status: 'w_biurze',
             });
             if (res.success) {
                 toast({ title: t('candidate.saved') });

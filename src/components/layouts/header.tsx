@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Bell, LogOut, Trash2, Calendar as CalendarIcon, XCircle } from 'lucide-react';
+import { Bell, LogOut, Trash2, Calendar as CalendarIcon, XCircle, Globe } from 'lucide-react';
 import type { SessionData, View, Notification, Settings } from '@/types';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -412,10 +412,14 @@ export default function Header({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{user.name} ({user.isAdmin ? t('common.admin') : t('common.coordinator')})</DropdownMenuLabel>
+            <DropdownMenuLabel>{user.name} ({user.isAdmin ? t('common.admin') : user.isRekrutacja ? 'Rekrutacja' : t('common.coordinator')})</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled>{t('header.profile')}</DropdownMenuItem>
             <DropdownMenuItem disabled>{t('header.support')}</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setLang(lang === 'pl' ? 'en' : 'pl')}>
+                <Globe className="mr-2 h-4 w-4" />
+                {lang === 'pl' ? 'Switch to English' : 'Zmień na polski'}
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onLogout} className="text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />

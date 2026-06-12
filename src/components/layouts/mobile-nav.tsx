@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { View, SessionData } from "@/types";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Globe } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
 const MAX_BAR_ITEMS = 5;
@@ -76,7 +76,7 @@ export function MobileNav({
     wdrodzeCount?: number;
     pendingDemandsCount?: number;
 }) {
-    const { t } = useLanguage();
+    const { t, lang, setLang } = useLanguage();
     const [isMoreOpen, setIsMoreOpen] = useState(false);
 
     const filteredItems = navItems.filter(item => {
@@ -160,6 +160,16 @@ export function MobileNav({
                                         </Link>
                                     </SheetClose>
                                 ))}
+                                <div className="h-px bg-border my-1" />
+                                <button
+                                    onClick={() => setLang(lang === 'pl' ? 'en' : 'pl')}
+                                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-foreground hover:bg-muted transition-colors w-full text-left"
+                                >
+                                    <div className="relative p-1.5 rounded-lg">
+                                        <Globe className="h-5 w-5 shrink-0 relative z-10" />
+                                    </div>
+                                    <span>{lang === 'pl' ? 'Switch to English' : 'Zmień na polski'}</span>
+                                </button>
                             </div>
                         </SheetContent>
                     </Sheet>

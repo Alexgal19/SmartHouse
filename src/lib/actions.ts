@@ -3015,6 +3015,7 @@ type CandidateCreateInput = {
     passportPhotoUrl?: string;
     sourceOdbiorId?: string | null;
     bokId?: string | null;
+    status?: import('../types').Candidate['status'];
 };
 
 export async function addCandidateAction(
@@ -3033,7 +3034,7 @@ export async function addCandidateAction(
             passportPhotoUrl: input.passportPhotoUrl || undefined,
             sourceOdbiorId: input.sourceOdbiorId || null,
             bokId: input.bokId || null,
-            status: 'wdrodze',
+            status: input.status || 'wdrodze',
             createdAt: new Date().toISOString(),
             interviewHistory: [],
         };
