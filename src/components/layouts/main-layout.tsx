@@ -342,7 +342,7 @@ export default function MainLayout({
             return navItems.filter(item => item.view === 'odbior');
         }
         if (currentUser?.isDriver) {
-            return navItems.filter(item => item.view === 'odbior' || item.view === 'zapotrzebowania' || item.view === 'employees' || item.view === 'housing' || item.view === 'control-cards');
+            return navItems.filter(item => item.view === 'odbior' || item.view === 'zapotrzebowania' || item.view === 'employees' || item.view === 'housing' || item.view === 'control-cards' || item.view === 'osoba-do-zakwaterowania');
         }
         if (currentUser?.isBok) {
             return navItems.filter(item => item.view === 'zapotrzebowania' || item.view === 'employees' || item.view === 'housing' || item.view === 'control-cards');
